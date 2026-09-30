@@ -30,7 +30,27 @@ clay-orange ink and pencil hatching.
 
 ## Install
 
-### Build from source (recommended)
+### Download
+
+Grab the latest **MacDirStat-x.y.z.dmg** from [Releases](https://github.com/a-barwick/macdirstat/releases/latest),
+open it, and drag MacDirStat into Applications. It runs on macOS 14 or later, on Apple silicon and Intel.
+
+**First launch:** MacDirStat isn't signed by an Apple-registered developer, so macOS blocks it the first time
+with a message that Apple couldn't verify it. To allow it (you only need to do this once):
+
+1. Click **Done** on the warning.
+2. Open **System Settings › Privacy & Security** and scroll down to the Security section.
+3. Click **Open Anyway** next to MacDirStat, then confirm.
+
+Or, from Terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/MacDirStat.app
+```
+
+On macOS 14 you can also right-click the app and choose **Open**.
+
+### Build from source
 
 You need macOS 14 or later and Swift 5.10 or later. Xcode works, and so do the Command Line Tools on their own.
 
@@ -41,16 +61,7 @@ cd macdirstat
 open build/MacDirStat.app
 ```
 
-Then drag `build/MacDirStat.app` into `/Applications` if you want to keep it.
-
-### Prebuilt app
-
-Every CI run uploads an unsigned `MacDirStat.zip` artifact. The app is ad-hoc signed, not notarized, so macOS
-will block it the first time. Right-click it and choose **Open**, or run:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/MacDirStat.app
-```
+An app you build yourself never gets the first-launch warning.
 
 ### Seeing everything
 

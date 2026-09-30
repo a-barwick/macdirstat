@@ -23,3 +23,14 @@ open build/MacDirStat.app --args --scan ~/Downloads
 - **Match the style.** Swift API naming, small focused types, and comments that explain *why*.
 - UI changes: please attach before/after screenshots to the pull request, ideally in both a light and a dark
   theme.
+
+## Releasing (maintainers)
+
+1. Push a version tag: `git tag v1.2.0 && git push origin v1.2.0`.
+2. The **Release** workflow runs the tests, builds a universal (Apple silicon + Intel) app, packages
+   `MacDirStat-1.2.0.dmg` and a `.zip`, and publishes a GitHub Release with install notes.
+
+You can build the same files locally with `VERSION=1.2.0 UNIVERSAL=1 ./Scripts/package-release.sh`.
+
+Releases are unsigned by default. To ship signed and notarized builds, add the Developer ID and notary secrets
+listed at the top of `.github/workflows/release.yml`. The workflow picks them up automatically.

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds MacDirStat.app into ./build (release, ad-hoc signed).
-# Optional env: VERSION, BUILD_NUMBER, BUNDLE_ID.
+# Optional env: VERSION, BUILD_NUMBER, BUNDLE_ID, UNIVERSAL=1 (arm64 + x86_64).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -8,8 +8,20 @@ APP="build/MacDirStat.app"
 VERSION="${VERSION:-1.0.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 BUNDLE_ID="${BUNDLE_ID:-io.github.a-barwick.macdirstat}"
-swift build -c release
-BIN="$(swift build -c release --show-bin-path)/MacDirStat"
+# UNIVERSAL=1 builds for Apple silicon + Intel: one build per architecture, merged with lipo.
+if [ "${UNIVERSAL:-0}" = 1 ]; then
+  BIN="build/MacDirStat-universal"
+  mkdir -p build
+  SLICES=()
+  for ARCH in arm64 x86_64; do
+    swift build -c release --triple "$ARCH-apple-macosx14.0"
+    SLICES+=("$(swift build -c release --triple "$ARCH-apple-macosx14.0" --show-bin-path)/MacDirStat")
+  done
+  lipo -create "${SLICES[@]}" -output "$BIN"
+else
+  swift build -c release
+  BIN="$(swift build -c release --show-bin-path)/MacDirStat"
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

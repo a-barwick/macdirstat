@@ -1,0 +1,89 @@
+name: Release
+
+# Push a tag like v1.2.0 to publish a release with a DMG and zip.
+#
+# Unsigned by default. To ship signed + notarized builds instead, add these repository secrets
+# (requires an Apple Developer Program membership):
+#   MACOS_CERTIFICATE_P12        base64 of your "Developer ID Application" certificate exported as .p12
+#   MACOS_CERTIFICATE_PASSWORD   password for that .p12
+#   DEVELOPER_ID_IDENTITY        e.g. "Developer ID Application: Jane Doe (TEAMID1234)"
+#   NOTARY_KEY_P8                base64 of an App Store Connect API key (.p8)
+#   NOTARY_KEY_ID, NOTARY_ISSUER_ID
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        run: ./Scripts/test.sh
+
+      - name: Import signing certificate
+        if: env.MACOS_CERTIFICATE_P12 != ''
+        env:
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Write notary key
+        if: env.NOTARY_KEY_P8 != ''
+        run: echo "$NOTARY_KEY_P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+
+      - name: Package
+        env:
+          UNIVERSAL: "1"
+          BUILD_NUMBER: ${{ github.run_number }}
+          DEVELOPER_ID_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          export VERSION="${GITHUB_REF_NAME#v}"
+          if [ -n "$NOTARY_KEY_P8" ]; then export NOTARY_KEY_PATH="$RUNNER_TEMP/notary.p8"; fi
+          ./Scripts/package-release.sh
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "$MACOS_CERTIFICATE_P12" ]; then
+            printf '%s\n' "Download **MacDirStat-${VERSION}.dmg**, open it, and drag MacDirStat into Applications." > notes.md
+          else
+            cat > notes.md <<NOTES
+          Download **MacDirStat-${VERSION}.dmg**, open it, and drag MacDirStat into Applications.
+
+          > **First launch:** this build isn't signed by an Apple-registered developer, so macOS will stop it
+          > the first time. Click **Done**, then go to **System Settings › Privacy & Security**, scroll down, and
+          > click **Open Anyway** next to MacDirStat. (Or run
+          > \`xattr -dr com.apple.quarantine /Applications/MacDirStat.app\` in Terminal.) You only need to do this once.
+
+          Works on macOS 14 or later, on both Apple silicon and Intel Macs.
+          NOTES
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            "build/MacDirStat-${VERSION}.dmg" "build/MacDirStat-${VERSION}.zip" \
+            --title "MacDirStat ${VERSION}" --notes-file notes.md --generate-notes
+
+      - name: Clean up keychain
+        if: always() && env.MACOS_CERTIFICATE_P12 != ''
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
