@@ -92,10 +92,6 @@ struct HeaderBar: View {
             Text("MacDirStat")
                 .font(Fonts.serif(17, weight: .semibold))
                 .foregroundStyle(theme.ink.color)
-            Text("a warm little map of your disk")
-                .font(Fonts.hand(13))
-                .foregroundStyle(theme.inkSoft.color)
-                .padding(.leading, 2)
 
             Spacer()
 

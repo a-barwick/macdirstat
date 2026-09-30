@@ -130,6 +130,10 @@ final class FileNode {
     }
 }
 
+// Safe by convention (see the type's doc comment): workers only write nodes they own during a scan,
+// and after the hand-off every read and write happens on the main thread.
+extension FileNode: @unchecked Sendable {}
+
 extension FileNode: Hashable {
     static func == (lhs: FileNode, rhs: FileNode) -> Bool { lhs === rhs }
     func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
