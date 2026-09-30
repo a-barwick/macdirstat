@@ -32,9 +32,9 @@ struct TreemapRenderJob {
 }
 
 enum TreemapRenderer {
-    static func render(_ job: TreemapRenderJob, isCancelled: () -> Bool = { false }) -> CGImage? {
+    static func render(_ job: TreemapRenderJob, isCancelled: @escaping () -> Bool = { false }) -> CGImage? {
         let w = job.width, h = job.height
-        guard w > 0, h > 0,
+        guard !isCancelled(), w > 0, h > 0,
               let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
@@ -54,7 +54,7 @@ enum TreemapRenderer {
             }
         }
 
-        shadeLeaves(job, pixels: pixels, bytesPerRow: bytesPerRow)
+        shadeLeaves(job, pixels: pixels, bytesPerRow: bytesPerRow, isCancelled: isCancelled)
         if isCancelled() { return nil }
 
         // Vector pass, in a top-left coordinate system to match the layout.
@@ -69,6 +69,7 @@ enum TreemapRenderer {
             drawCushionDetails(job, ctx: ctx)
         }
         if isCancelled() { return nil }
+        if isCancelled() { return nil }
         drawLabels(job, ctx: ctx)
 
         return ctx.makeImage()
@@ -76,7 +77,8 @@ enum TreemapRenderer {
 
     // MARK: - Pixels
 
-    private static func shadeLeaves(_ job: TreemapRenderJob, pixels: UnsafeMutablePointer<UInt8>, bytesPerRow: Int) {
+    private static func shadeLeaves(_ job: TreemapRenderJob, pixels: UnsafeMutablePointer<UInt8>, bytesPerRow: Int,
+                                    isCancelled: () -> Bool) {
         // Light from the upper left, a little in front.
         let lx = -0.09759, ly = -0.19518, lz = 0.97590
         let ambient: Double
@@ -94,6 +96,7 @@ enum TreemapRenderer {
         let chunkCount = max(1, min(64, leaves.count / 64))
         leaves.withUnsafeBufferPointer { buf in
             DispatchQueue.concurrentPerform(iterations: chunkCount) { chunk in
+                if isCancelled() { return }
                 let lo = buf.count * chunk / chunkCount
                 let hi = buf.count * (chunk + 1) / chunkCount
                 for li in lo..<hi {

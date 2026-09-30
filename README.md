@@ -12,6 +12,8 @@ open build/MacDirStat.app
 open build/MacDirStat.app --args --scan ~/Downloads   # start mapping straight away
 ```
 
+Run the tests with `./Scripts/test.sh` (it also works with only the Command Line Tools installed).
+
 Copy `build/MacDirStat.app` into `/Applications` if you want to keep it. For a complete map of Macintosh HD,
 grant it **Full Disk Access** (System Settings › Privacy & Security). Otherwise a few protected folders are
 counted as "kept their secrets".
@@ -37,13 +39,24 @@ counted as "kept their secrets".
 | Reveal / Copy path / Trash | right-click, ⌥⌘F, ⇧⌘C, ⌘⌫ |
 | Rescan | ⌘R (or right-click › Rescan This Folder) |
 
+## Safety notes
+
+- Before it moves anything to the Trash or rescans a folder, it checks that the path still leads to the same
+  scanned object: no ancestor has been swapped for a symlink, and the inode hasn't changed. If either check
+  fails, it leaves the file alone.
+- Moving something to the Trash doesn't free space until you empty the Trash.
+- After a trash or rescan, a hard-linked file is still counted exactly once, as long as any of its links
+  remain in the tree.
+
 ## Layout
 
 ```
 Sources/MacDirStat/
-  Model/      FileNode, DiskScanner (getattrlistbulk), ExtensionRegistry
+  Model/      FileNode, DiskScanner (getattrlistbulk), ExtensionRegistry,
+              TreeSafety (identity checks, hard-link registry, tree edits)
   Treemap/    TreemapLayout (squarify + cushions), TreemapRenderer (pixels + sketch), TreemapView (NSView)
   Views/      SwiftUI shell, DirectoryOutline (NSOutlineView), welcome/scanning screens
   Support/    Theme palettes, Sketch (rough.js-style wobbly paths), formatting & whimsy
-Scripts/      build-app.sh, make-icon.swift
+Scripts/      build-app.sh, test.sh, make-icon.swift
+Tests/        Swift Testing suite (real on-disk fixtures)
 ```

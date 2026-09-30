@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "MacDirStat",
             path: "Sources/MacDirStat"
-        )
+        ),
+        .testTarget(
+            name: "MacDirStatTests",
+            dependencies: ["MacDirStat"],
+            path: "Tests/MacDirStatTests"
+        ),
     ]
 )

@@ -29,6 +29,15 @@ final class DiskScanner: @unchecked Sendable {
 
     private let inodeLock = NSLock()
     private var seenHardLinks = Set<UInt64>()
+    private var hardLinkEntries: [HardLinkEntry] = []
+
+    /// Every multiply-linked file met during the scan, with its real allocation (even for the links
+    /// that were recorded as 0 bytes). Feed these to `HardLinkRegistry` so edits can rebalance them.
+    var hardLinks: [HardLinkEntry] {
+        inodeLock.lock()
+        defer { inodeLock.unlock() }
+        return hardLinkEntries
+    }
 
     private let skipPaths: Set<String>
     private let registry = ExtensionRegistry.shared
@@ -56,14 +65,27 @@ final class DiskScanner: @unchecked Sendable {
         cond.unlock()
     }
 
-    /// Scans `path` synchronously (call it off the main thread). Returns nil if cancelled or unreadable.
-    func scan(path rawPath: String) -> FileNode? {
-        let path = rawPath.count > 1 && rawPath.hasSuffix("/") ? String(rawPath.dropLast()) : rawPath
+    /// Resolves symlinks so a root node's name is the path of the real object.
+    static func realPath(_ path: String) -> String? {
+        guard let resolved = realpath(path, nil) else { return nil }
+        defer { free(resolved) }
+        return String(cString: resolved)
+    }
+
+    /// Scans `path` synchronously (call it off the main thread). Returns nil if cancelled or missing;
+    /// an unreadable directory comes back with `unreadable` set.
+    ///
+    /// The root node is named `rootName` (for splicing a rescan into an existing tree) or, by default,
+    /// the symlink-free absolute path.
+    func scan(path rawPath: String, rootName: String? = nil) -> FileNode? {
+        guard let path = rootName == nil ? DiskScanner.realPath(rawPath) : rawPath else { return nil }
+        let name = rootName ?? path
         var st = stat()
         guard lstat(path, &st) == 0 else { return nil }
 
         guard (st.st_mode & S_IFMT) == S_IFDIR else {
-            let node = FileNode(name: path, kind: .file, parent: nil)
+            let node = FileNode(name: name, kind: .file, parent: nil)
+            node.fileID = UInt64(st.st_ino)
             node.size = Int64(st.st_blocks) * 512
             node.logicalSize = Int64(st.st_size)
             node.fileCount = 1
@@ -72,8 +94,9 @@ final class DiskScanner: @unchecked Sendable {
             return node
         }
 
-        let root = FileNode(name: path, kind: .directory, parent: nil)
+        let root = FileNode(name: name, kind: .directory, parent: nil)
         root.modified = st.st_mtimespec.tv_sec
+        root.fileID = UInt64(st.st_ino)
 
         cond.lock()
         stack = [(root, path)]
@@ -181,6 +204,8 @@ final class DiskScanner: @unchecked Sendable {
         let prefix = path == "/" ? "/" : path + "/"
 
         while true {
+            // Huge directories can take a while; don't keep going after a cancel.
+            if isCancelled { return [] }
             let count = getattrlistbulk(fd, &attrs, buffer, bufferSize, 0)
             if count <= 0 {
                 if count < 0 && kids.isEmpty {
@@ -232,6 +257,7 @@ final class DiskScanner: @unchecked Sendable {
                     if skipPaths.contains(childPath) { continue }
                     let child = FileNode(name: name, kind: .directory, parent: node)
                     child.modified = mtime
+                    child.fileID = fileID
                     kids.append(child)
                     subdirs.append((child, childPath))
                     counts.dirs += 1
@@ -254,16 +280,19 @@ final class DiskScanner: @unchecked Sendable {
                     p += 8
                 }
 
+                let kind: FileNode.Kind = objType == Self.VREG ? .file : (objType == Self.VLNK ? .symlink : .other)
+                let child = FileNode(name: name, kind: kind, parent: node)
+                child.fileID = fileID
+
                 // Hard links: only the first link we meet pays for the blocks.
                 if linkCount > 1 && fileID != 0 {
                     inodeLock.lock()
                     let isNew = seenHardLinks.insert(fileID).inserted
+                    hardLinkEntries.append(HardLinkEntry(fileID: fileID, allocSize: max(0, allocSize), node: child))
                     inodeLock.unlock()
                     if !isNew { allocSize = 0 }
                 }
 
-                let kind: FileNode.Kind = objType == Self.VREG ? .file : (objType == Self.VLNK ? .symlink : .other)
-                let child = FileNode(name: name, kind: kind, parent: node)
                 child.size = max(0, allocSize)
                 child.logicalSize = max(0, totalSize)
                 child.fileCount = 1

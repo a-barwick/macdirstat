@@ -46,6 +46,9 @@ final class AppState: ObservableObject {
     let hover = HoverState()
 
     private var scanner: DiskScanner?
+    private var hardLinks = HardLinkRegistry()
+    /// Bumped per full scan so late subtree rescans can tell their tree is gone.
+    private var scanGeneration = 0
     private var progressTimer: Timer?
     private var extensionColors: [RGB] = []
     private var toastWork: DispatchWorkItem?
@@ -118,14 +121,16 @@ final class AppState: ObservableObject {
             let result = scanner.scan(path: path)
             let stats = result.map { ExtensionStats.compute(root: $0) } ?? []
             let snapshot = scanner.snapshot
+            let links = scanner.hardLinks
             DispatchQueue.main.async {
                 guard self.scanner === scanner else { return } // superseded or cancelled
-                self.finishScan(result, stats: stats, snapshot: snapshot, duration: Date().timeIntervalSince(started))
+                self.finishScan(result, links: links, stats: stats, snapshot: snapshot,
+                                duration: Date().timeIntervalSince(started))
             }
         }
     }
 
-    private func finishScan(_ result: FileNode?, stats: [ExtensionStat], snapshot: DiskScanner.Snapshot, duration: TimeInterval) {
+    private func finishScan(_ result: FileNode?, links: [HardLinkEntry], stats: [ExtensionStat], snapshot: DiskScanner.Snapshot, duration: TimeInterval) {
         progressTimer?.invalidate()
         progressTimer = nil
         scanner = nil
@@ -139,6 +144,8 @@ final class AppState: ObservableObject {
         lastScanDuration = duration
         extensionStats = stats
         assignColors()
+        hardLinks = HardLinkRegistry(links)
+        scanGeneration += 1
         root = result
         viewRoot = result
         selection = nil
@@ -169,34 +176,62 @@ final class AppState: ObservableObject {
         viewRoot = nil
         selection = nil
         extensionStats = []
+        hardLinks = HardLinkRegistry()
+        scanGeneration += 1
         treeVersion += 1
         phase = .welcome
     }
 
     /// Rescan one folder in place and splice the fresh subtree into the tree.
     func rescan(_ node: FileNode) {
-        guard node.isDirectory, let parent = node.parent else { rescan(); return }
-        let path = node.path
-        showToast("Re-reading \(node.name)…")
+        guard let root, node.isDirectory, node !== root else { rescan(); return }
+        guard node.isAttached(to: root) else { return }
+        let path: String
+        switch FileIdentity.verify(node) {
+        case .success(let url): path = url.path
+        case .failure(let why):
+            showToast("Can't rescan \(node.name): \(why.explanation). Try a full rescan (⌘R).")
+            return
+        }
+        let generation = scanGeneration
+        let name = node.name
+        showToast("Re-reading \(name)…")
         DispatchQueue.global(qos: .userInitiated).async {
-            let fresh = DiskScanner().scan(path: path)
+            let scanner = DiskScanner()
+            let fresh = scanner.scan(path: path, rootName: name)
+            let freshLinks = scanner.hardLinks
+            let partial = scanner.snapshot.unreadable
             DispatchQueue.main.async {
-                guard let fresh, node.parent === parent, self.root.map({ node.isDescendant(of: $0) }) == true else { return }
-                // The fresh root is named with its full path; re-home it under the parent's name.
-                let renamed = FileNode(name: node.name, kind: .directory, parent: parent)
-                renamed.children = fresh.children
-                for c in renamed.children { c.parent = renamed }
-                renamed.size = fresh.size
-                renamed.logicalSize = fresh.logicalSize
-                renamed.fileCount = fresh.fileCount
-                renamed.dirCount = fresh.dirCount
-                renamed.modified = fresh.modified
-                parent.replaceChild(node, with: renamed)
-                if self.viewRoot.map({ $0.isDescendant(of: node) }) == true { self.viewRoot = renamed }
-                if self.selection.map({ $0.isDescendant(of: node) }) == true { self.selection = renamed }
-                self.refreshAfterMutation()
-                self.showToast("Fresh as a daisy: \(renamed.name) is \(Format.bytes(renamed.size))")
+                self.applyRescan(fresh, links: freshLinks, partial: partial, replacing: node, generation: generation)
             }
+        }
+    }
+
+    private func applyRescan(_ fresh: FileNode?, links: [HardLinkEntry], partial: Int, replacing node: FileNode, generation: Int) {
+        guard generation == scanGeneration, let root else { return }
+        guard let fresh else {
+            showToast("\(node.name) seems to have vanished. A full rescan (⌘R) will catch up.")
+            return
+        }
+        let oldUnreadable = TreeEdit.unreadableCount(in: node)
+        switch TreeEdit.splice(fresh, freshLinks: links, replacing: node, root: root, links: hardLinks) {
+        case .staleTarget:
+            return // the folder left the tree while we were reading it; nothing to update
+        case .unreadable:
+            showToast("Couldn't read \(node.name) this time, so I kept the previous numbers.")
+            return
+        case .spliced:
+            break
+        }
+        unreadableCount += TreeEdit.unreadableCount(in: fresh) - oldUnreadable
+        if let v = viewRoot, v.isDescendant(of: node) { viewRoot = fresh }
+        if let s = selection, s.isDescendant(of: node) { selection = fresh }
+        if let h = hover.node, h.isDescendant(of: node) { hover.node = nil }
+        refreshAfterMutation()
+        if partial > 0 {
+            showToast("Re-read \(fresh.name), but \(partial) folder\(partial == 1 ? "" : "s") inside kept their secrets")
+        } else {
+            showToast("Fresh as a daisy: \(fresh.name) is \(Format.bytes(fresh.size))")
         }
     }
 
@@ -210,14 +245,21 @@ final class AppState: ObservableObject {
 
     // MARK: - Navigation
 
+    /// Ignores nodes that have left the tree (e.g. clicked just as they were trashed).
+    private func isLive(_ node: FileNode) -> Bool {
+        guard let root else { return false }
+        return node.isAttached(to: root)
+    }
+
     func select(_ node: FileNode?) {
         guard selection !== node else { return }
+        if let node, !isLive(node) { return }
         selection = node
     }
 
     func zoom(into node: FileNode) {
         let target = node.isDirectory ? node : (node.parent ?? node)
-        guard target.isDirectory, target !== viewRoot else { return }
+        guard target.isDirectory, target !== viewRoot, isLive(target) else { return }
         viewRoot = target
     }
 
@@ -249,22 +291,31 @@ final class AppState: ObservableObject {
     }
 
     func moveToTrash(_ node: FileNode) {
-        guard let parent = node.parent else {
+        guard let root, let parent = node.parent else {
             showToast("Let's not trash the whole thing.")
             return
         }
+        guard node.isAttached(to: root) else { return }
         let alert = NSAlert()
         alert.messageText = "Move “\(node.name)” to the Trash?"
-        alert.informativeText = "That frees up about \(Format.bytes(node.size))"
+        alert.informativeText = "Once you empty the Trash, that frees up about \(Format.bytes(node.size))"
             + (node.isDirectory ? " across \(Format.count(node.fileCount)) files." : ".")
-            + " You can still rescue it from the Trash later."
+            + " Until then you can still put it back."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Move to Trash")
         alert.addButton(withTitle: "Keep It")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
+        // Re-check right before touching the disk: the path must still lead to the object we scanned.
+        let url: URL
+        switch FileIdentity.verify(node) {
+        case .success(let verified): url = verified
+        case .failure(let why):
+            showToast("Left \(node.name) alone: \(why.explanation). Rescan (⌘R) to refresh.")
+            return
+        }
         do {
-            try FileManager.default.trashItem(at: node.url, resultingItemURL: nil)
+            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
         } catch {
             showToast("Couldn't trash it: \(error.localizedDescription)")
             return
@@ -273,9 +324,10 @@ final class AppState: ObservableObject {
         if let v = viewRoot, v.isDescendant(of: node) { viewRoot = parent }
         if let s = selection, s.isDescendant(of: node) { selection = parent }
         if let h = hover.node, h.isDescendant(of: node) { hover.node = nil }
-        parent.removeChild(node)
+        unreadableCount -= TreeEdit.unreadableCount(in: node)
+        TreeEdit.remove(node, root: root, links: hardLinks)
         refreshAfterMutation()
-        showToast("Tossed \(node.name) — \(Format.bytes(node.size)) lighter ✦")
+        showToast("Moved \(node.name) to the Trash. Empty it to reclaim \(Format.bytes(node.size)) ✦")
     }
 
     func showToast(_ text: String) {

@@ -27,8 +27,11 @@ final class TreemapCanvas: NSView {
     private let selectionLayer = CAShapeLayer()
     private let selectionGlow = CAShapeLayer()
 
+    /// The layout that matches the bitmap currently on screen. Hit-testing and overlays only ever use
+    /// this one, so what you click is what you see.
     private var layoutData: TreemapLayout?
-    private var renderGeneration = 0
+    /// Set while a newer layout is being rendered; pointer input waits for it to land.
+    private var inFlight: RenderToken?
     private var pendingRender: DispatchWorkItem?
     private static let renderQueue = DispatchQueue(label: "treemap.render", qos: .userInitiated)
 
@@ -139,41 +142,52 @@ final class TreemapCanvas: NSView {
     }
 
     private func rebuild() {
+        inFlight?.cancel()
+        inFlight = nil
         guard let state, let root = state.viewRoot, bounds.width >= 4, bounds.height >= 4 else {
             layoutData = nil
             imageLayer.contents = nil
-            updateSelectionOverlay()
-            updateExtensionOverlay()
+            refreshOverlays()
             return
         }
         let scale = window?.backingScaleFactor ?? 2
         let pw = Int(bounds.width * scale), ph = Int(bounds.height * scale)
         let layout = TreemapLayout.build(root: root, pixelWidth: pw, pixelHeight: ph, scale: scale,
                                          style: state.style) { [unowned state] in state.color(for: $0) }
-        layoutData = layout
-        updateSelectionOverlay()
-        updateExtensionOverlay()
-        updateHoverOverlay()
-
         let job = makeJob(layout, state: state, scale: scale)
-        renderGeneration += 1
-        let generation = renderGeneration
+
+        let token = RenderToken()
+        inFlight = token
+        clearHover()
         TreemapCanvas.renderQueue.async { [weak self] in
-            let stale = { [weak self] () -> Bool in
-                // Reading the generation off-main is a benign race; worst case we finish a stale frame.
-                guard let self else { return true }
-                return self.renderGeneration != generation
-            }
-            let image = TreemapRenderer.render(job, isCancelled: stale)
+            let image = TreemapRenderer.render(job, isCancelled: token.isCancelled)
             DispatchQueue.main.async {
-                guard let self, self.renderGeneration == generation, let image else { return }
+                guard let self, self.inFlight === token, !token.isCancelled() else { return }
+                self.inFlight = nil
+                guard let image else { return }
+                // Bitmap and geometry go live together.
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
                 self.imageLayer.contents = image
                 self.imageLayer.contentsScale = scale
+                self.layoutData = layout
+                self.refreshOverlays()
                 CATransaction.commit()
             }
         }
+    }
+
+    private func refreshOverlays() {
+        updateSelectionOverlay()
+        updateExtensionOverlay()
+        updateHoverOverlay()
+    }
+
+    private func clearHover() {
+        guard hovered != nil else { return }
+        hovered = nil
+        state?.hover.node = nil
+        hoverLayer.path = nil
     }
 
     private func makeJob(_ layout: TreemapLayout, state: AppState, scale: CGFloat) -> TreemapRenderJob {
@@ -207,11 +221,16 @@ final class TreemapCanvas: NSView {
 
     // MARK: - Overlays
 
+    /// Layout pixels → view points. Uses the displayed bitmap's actual stretch, so it stays right
+    /// while a resize is still waiting for its re-render.
+    private func toView(_ r: CGRect, _ layout: TreemapLayout) -> CGRect {
+        let sx = bounds.width / CGFloat(layout.pixelWidth), sy = bounds.height / CGFloat(layout.pixelHeight)
+        return CGRect(x: r.minX * sx, y: r.minY * sy, width: r.width * sx, height: r.height * sy)
+    }
+
     private func viewRect(ofItem index: Int) -> CGRect {
         guard let layout = layoutData else { return .zero }
-        let r = layout.item(index).rect
-        let s = layout.scale
-        return CGRect(x: r.minX / s, y: r.minY / s, width: r.width / s, height: r.height / s)
+        return toView(layout.item(index).rect, layout)
     }
 
     private func updateSelectionOverlay() {
@@ -220,8 +239,9 @@ final class TreemapCanvas: NSView {
             selectionGlow.path = nil
             return
         }
-        let r = viewRect(ofItem: idx).insetBy(dx: 1.5, dy: 1.5)
-        guard r.width > 0, r.height > 0 else { return }
+        let full = viewRect(ofItem: idx)
+        // Slivers too thin to inset still get marked, just without the inset.
+        let r = full.width > 4 && full.height > 4 ? full.insetBy(dx: 1.5, dy: 1.5) : full
         let path = Sketch.roughRect(r, roughness: 1.6, seed: UInt64(idx) &+ 17)
         selectionGlow.path = path
         selectionLayer.path = path
@@ -241,10 +261,9 @@ final class TreemapCanvas: NSView {
             return
         }
         let path = CGMutablePath()
-        let s = layout.scale
         for leaf in layout.leaves where leaf.isFile && leaf.extID == ext {
-            let r = CGRect(x: CGFloat(leaf.x0) / s, y: CGFloat(leaf.y0) / s,
-                           width: CGFloat(leaf.x1 - leaf.x0) / s, height: CGFloat(leaf.y1 - leaf.y0) / s)
+            let r = toView(CGRect(x: CGFloat(leaf.x0), y: CGFloat(leaf.y0),
+                                  width: CGFloat(leaf.x1 - leaf.x0), height: CGFloat(leaf.y1 - leaf.y0)), layout)
             if r.width >= 2 && r.height >= 2 {
                 path.addRect(r.insetBy(dx: 0.8, dy: 0.8))
             } else {
@@ -275,9 +294,11 @@ final class TreemapCanvas: NSView {
     }
 
     private func node(at event: NSEvent) -> FileNode? {
-        guard let layout = layoutData else { return nil }
+        // Mid-transition the picture on screen is about to change; don't guess.
+        guard inFlight == nil, let layout = layoutData, bounds.width > 0, bounds.height > 0 else { return nil }
         let p = convert(event.locationInWindow, from: nil)
-        let px = CGPoint(x: p.x * layout.scale, y: p.y * layout.scale)
+        let px = CGPoint(x: p.x * CGFloat(layout.pixelWidth) / bounds.width,
+                         y: p.y * CGFloat(layout.pixelHeight) / bounds.height)
         return layout.hitTest(px).map { layout.item($0).node }
     }
 
@@ -310,5 +331,23 @@ final class TreemapCanvas: NSView {
         guard let state, let n = node(at: event) else { return nil }
         state.select(n)
         return state.contextMenu(for: n)
+    }
+}
+
+/// Thread-safe "stop working on this frame" flag shared between the main thread and the renderer.
+final class RenderToken: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+
+    func isCancelled() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
     }
 }

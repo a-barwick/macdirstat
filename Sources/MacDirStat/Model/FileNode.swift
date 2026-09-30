@@ -27,6 +27,8 @@ final class FileNode {
     /// Last modification, seconds since 1970. For directories: newest in the subtree.
     var modified: Int = 0
     let kind: Kind
+    /// Inode number at scan time; used to make sure we act on the same object later.
+    var fileID: UInt64 = 0
     var extID: UInt16 = 0
     /// Couldn't list this directory (permissions, usually).
     var unreadable = false
@@ -94,37 +96,55 @@ final class FileNode {
         return chain.reversed()
     }
 
-    /// Detaches `child` and subtracts its totals from every ancestor.
+    /// True if this node is still part of the tree rooted at `root`: every link on the way up is a
+    /// real parent→child membership, not a stale back-pointer.
+    func isAttached(to root: FileNode) -> Bool {
+        var node = self
+        while node !== root {
+            guard let p = node.parent, p.children.contains(where: { $0 === node }) else { return false }
+            node = p
+        }
+        return true
+    }
+
+    /// Detaches `child` (clearing its parent link) and subtracts its totals from every ancestor.
     func removeChild(_ child: FileNode) {
         guard let idx = children.firstIndex(where: { $0 === child }) else { return }
         children.remove(at: idx)
+        child.parent = nil
         let removedDirs = child.isDirectory ? child.dirCount + 1 : 0
-        var node: FileNode? = self
-        while let n = node {
-            n.size -= child.size
-            n.logicalSize -= child.logicalSize
-            n.fileCount -= child.fileCount
-            n.dirCount -= removedDirs
-            node = n.parent
-        }
+        propagate(size: -child.size, logical: -child.logicalSize, files: -child.fileCount, dirs: -removedDirs)
     }
 
-    /// Swaps `old` for `new` (e.g. after rescanning a subtree) and fixes up ancestor totals.
+    /// Swaps `old` for `new` (e.g. after rescanning a subtree), detaching `old`, and fixes up ancestor totals.
     func replaceChild(_ old: FileNode, with new: FileNode) {
         guard let idx = children.firstIndex(where: { $0 === old }) else { return }
         children[idx] = new
+        old.parent = nil
         new.parent = self
-        let dSize = new.size - old.size
-        let dLogical = new.logicalSize - old.logicalSize
-        let dFiles = new.fileCount - old.fileCount
-        let dDirs = new.dirCount - old.dirCount
+        children.sort { $0.size > $1.size }
+        propagate(size: new.size - old.size, logical: new.logicalSize - old.logicalSize,
+                  files: new.fileCount - old.fileCount, dirs: new.dirCount - old.dirCount)
+    }
+
+    /// Changes this file's allocated size (hard-link reconciliation) and fixes up ancestors.
+    func adjustSize(by delta: Int64) {
+        guard delta != 0 else { return }
+        size += delta
+        parent?.children.sort { $0.size > $1.size }
+        parent?.propagate(size: delta, logical: 0, files: 0, dirs: 0)
+    }
+
+    /// Applies deltas to this node and every ancestor, re-sorting each level whose child changed size
+    /// (the treemap layout relies on biggest-first order).
+    private func propagate(size dSize: Int64, logical dLogical: Int64, files dFiles: Int, dirs dDirs: Int) {
         var node: FileNode? = self
         while let n = node {
             n.size += dSize
             n.logicalSize += dLogical
             n.fileCount += dFiles
             n.dirCount += dDirs
-            n.children.sort { $0.size > $1.size }
+            if let p = n.parent, dSize != 0 { p.children.sort { $0.size > $1.size } }
             node = n.parent
         }
     }
