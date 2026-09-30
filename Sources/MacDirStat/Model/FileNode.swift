@@ -68,7 +68,7 @@ final class FileNode {
     var displayName: String {
         guard parent == nil else { return name }
         if name == "/" { return "Macintosh HD" }
-        if name == NSHomeDirectory() { return "Home (\((name as NSString).lastPathComponent))" }
+        if name == NSHomeDirectory() { return "Home" }
         return (name as NSString).lastPathComponent
     }
 

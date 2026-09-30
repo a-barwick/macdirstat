@@ -3,7 +3,6 @@ import SwiftUI
 struct WelcomeView: View {
     @ObservedObject var state: AppState
     @State private var appeared = false
-    @State private var dropTargeted = false
 
     private var theme: Theme { state.theme }
 

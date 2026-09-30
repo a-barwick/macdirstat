@@ -38,6 +38,9 @@ enum Format {
         return dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(seconds)))
     }
 
+    /// Paths under the home folder as `~/…`: shorter, and keeps usernames out of screenshots.
+    static func path(_ p: String) -> String { (p as NSString).abbreviatingWithTildeInPath }
+
     static func duration(_ t: TimeInterval) -> String {
         t < 10 ? String(format: "%.1fs", t) : "\(Int(t.rounded()))s"
     }

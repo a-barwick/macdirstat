@@ -67,7 +67,7 @@ enum Sketch {
         return path
     }
 
-    /// The Claude-ish spark: uneven rays bursting from a centre.
+    /// A hand-drawn spark: uneven rays bursting from a centre.
     static func spark(in rect: CGRect, rays: Int = 11, seed: UInt64 = 7, wobble: CGFloat = 0.18) -> CGMutablePath {
         let path = CGMutablePath()
         var rng = SeededRandom(seed: seed)
@@ -160,7 +160,7 @@ struct SquiggleShape: Shape {
     }
 }
 
-/// The Claude-ish spark mark, stroked with round caps like a brush pen.
+/// The app's spark mark, stroked with round caps like a brush pen.
 struct SparkMark: View {
     var color: Color
     var lineWidth: CGFloat = 4

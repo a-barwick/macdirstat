@@ -22,8 +22,6 @@ final class HardLinkRegistry {
         add(entries)
     }
 
-    var isEmpty: Bool { groups.isEmpty }
-
     func add(_ entries: [HardLinkEntry]) {
         for e in entries {
             if groups[e.fileID] == nil {

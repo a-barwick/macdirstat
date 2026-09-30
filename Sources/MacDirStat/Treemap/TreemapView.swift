@@ -215,7 +215,7 @@ final class TreemapCanvas: NSView {
         let theme = state.theme
         return TreemapRenderJob(width: layout.pixelWidth, height: layout.pixelHeight, scale: scale, style: state.style,
                                 leaves: layout.leaves, outlines: outlines, labels: labels,
-                                background: theme.well, ink: state.style == .sketch ? theme.ink : Palette.slate,
+                                background: theme.well, ink: theme.ink,
                                 tagPaper: theme.paper, isDark: theme.isDark)
     }
 

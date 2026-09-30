@@ -34,13 +34,9 @@ struct RGB: Equatable {
 /// The warm palette: ivory paper, slate ink, clay accents.
 enum Palette {
     static let clay = RGB(hex: 0xD97757)
-    static let bookCloth = RGB(hex: 0xCC785C)
     static let kraft = RGB(hex: 0xD4A27F)
-    static let manilla = RGB(hex: 0xEBDBBC)
     static let oat = RGB(hex: 0xE3DACC)
     static let ivory = RGB(hex: 0xFAF9F5)
-    static let ivoryMedium = RGB(hex: 0xF0EEE6)
-    static let cloud = RGB(hex: 0xB0AEA5)
     static let slate = RGB(hex: 0x141413)
     static let olive = RGB(hex: 0x788C5D)
     static let sky = RGB(hex: 0x6A9BCC)

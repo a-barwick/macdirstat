@@ -33,7 +33,6 @@ final class AppState: ObservableObject {
     @Published private(set) var progress = DiskScanner.Snapshot()
     @Published private(set) var scanVerb = Whimsy.scanVerbs[0]
     @Published private(set) var scanPath = ""
-    @Published private(set) var scanStarted = Date()
     @Published private(set) var lastScanDuration: TimeInterval = 0
     @Published private(set) var unreadableCount = 0
     @Published var toast: String?
@@ -101,7 +100,6 @@ final class AppState: ObservableObject {
         let scanner = DiskScanner()
         self.scanner = scanner
         scanPath = path
-        scanStarted = Date()
         progress = DiskScanner.Snapshot()
         scanVerb = Whimsy.scanVerbs.randomElement()!
         phase = .scanning

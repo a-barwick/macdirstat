@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        run: ./Scripts/test.sh
+
+      - name: Build app
+        run: ./Scripts/build-app.sh
+
+      - name: Package
+        run: ditto -c -k --keepParent build/MacDirStat.app build/MacDirStat.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MacDirStat
+          path: build/MacDirStat.zip

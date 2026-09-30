@@ -15,7 +15,7 @@ struct ScanningView: View {
                 .contentTransition(.opacity)
                 .animation(.easeInOut(duration: 0.4), value: state.scanVerb)
 
-            Text(state.scanPath == "/" ? "Macintosh HD" : state.scanPath)
+            Text(state.scanPath == "/" ? "Macintosh HD" : Format.path(state.scanPath))
                 .font(Fonts.hand(16))
                 .foregroundStyle(theme.inkSoft.color)
                 .lineLimit(1)
@@ -31,7 +31,7 @@ struct ScanningView: View {
             .background(WobblyRoundedRect(seed: 77, radius: 14, wobble: 1.4).fill(theme.panel.color))
             .overlay(SketchRect(seed: 78, roughness: 1.4).stroke(theme.ink.color.opacity(0.5), lineWidth: 1.2))
 
-            Text(state.progress.currentPath)
+            Text(Format.path(state.progress.currentPath))
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(theme.inkSoft.color.opacity(0.8))
                 .lineLimit(1)

@@ -1,62 +1,123 @@
 # MacDirStat ✺
 
-A warm, hand-drawn take on WinDirStat for macOS. It gives you a directory tree, a file-type legend and a treemap of your disk, drawn with ivory paper, clay-orange ink and pencil hatching.
+**A warm, hand-drawn disk usage map for macOS.** It's inspired by WinDirStat and has the same three views: a
+directory tree, a list of file types, and a treemap where big boxes are big files. It's drawn with ivory paper,
+clay-orange ink and pencil hatching.
 
-## Build & run
+![MacDirStat in Sketchbook style](docs/sketchbook.jpg)
 
-Needs macOS 14+ and the Swift toolchain (Xcode Command Line Tools is enough).
+<p align="center">
+  <img src="docs/cushions-slate.jpg" width="49%" alt="Cushion treemap on the dark Slate theme">
+  <img src="docs/welcome.jpg" width="49%" alt="Welcome screen">
+</p>
+
+## Features
+
+- **Fast scanning.** It uses `getattrlistbulk(2)` across a pool of worker threads and maps about 3 million files
+  in roughly 30 seconds on an Apple silicon Mac. Sizes are bytes actually allocated on disk and match `du`.
+  Each hard-linked file is counted once.
+- **The Tree.** A native outline view with share bars and sortable name, size, item-count and last-change
+  columns. It stays fast even with folders that hold 100k entries.
+- **The Map.** A squarified treemap in two styles:
+  - *Sketchbook*: flat colors, pencil hatching and wobbly pen outlines around folders.
+  - *Cushions*: the classic van Wijk cushion shading from WinDirStat.
+  - Big folders get hand-lettered name tags. Click to select, double-click to dive in, and use the breadcrumbs
+    to climb back out.
+- **File Types.** See which extensions eat your disk, and click one to outline every matching file on the map.
+- **Cleanup that's hard to get wrong.** Moving something to the Trash asks first. Right before it acts, it checks
+  that the path still points at the item you scanned, so a symlink swap or a replaced file won't redirect it.
+- **Four themes:** Ivory, Oat, Clay and Slate (dark).
+
+## Install
+
+### Build from source (recommended)
+
+You need macOS 14 or later and Swift 5.10 or later. Xcode works, and so do the Command Line Tools on their own.
 
 ```bash
-./Scripts/build-app.sh          # → build/MacDirStat.app (release, ad-hoc signed, with icon)
+git clone https://github.com/a-barwick/macdirstat.git
+cd macdirstat
+./Scripts/build-app.sh
 open build/MacDirStat.app
-open build/MacDirStat.app --args --scan ~/Downloads   # start mapping straight away
 ```
 
-Run the tests with `./Scripts/test.sh` (it also works with only the Command Line Tools installed).
+Then drag `build/MacDirStat.app` into `/Applications` if you want to keep it.
 
-Copy `build/MacDirStat.app` into `/Applications` if you want to keep it. For a complete map of Macintosh HD,
-grant it **Full Disk Access** (System Settings › Privacy & Security). Otherwise a few protected folders are
-counted as "kept their secrets".
+### Prebuilt app
 
-## What's inside
+Every CI run uploads an unsigned `MacDirStat.zip` artifact. The app is ad-hoc signed, not notarized, so macOS
+will block it the first time. Right-click it and choose **Open**, or run:
 
-- **Fast scanning**: `getattrlistbulk(2)` feeds a pool of worker threads, and hard links are only counted once.
-  Sizes are bytes allocated on disk and match `du`. On an M-series Mac, about 3M files are scanned in roughly 30s.
-- **The Tree**: an `NSOutlineView` with hatched share bars, sortable columns, and ⌘⌫ to trash.
-- **The Map**: a squarified treemap. The layout is computed on the main thread and only goes as deep as there
-  are pixels to show; the pixel shading runs on background threads.
-  - *Sketchbook*: flat gouache tiles, pencil hatching, and wobbly pen outlines around folders.
-  - *Cushions*: classic van Wijk cushion shading, like the original WinDirStat.
-  - Hand-lettered tags on the big folders (⌘L to toggle).
-- **File Types**: click an extension to outline every matching file on the map.
-- **Four papers**: Ivory, Oat, Clay and Slate (dark), switched with ⌘1–⌘4.
+```bash
+xattr -dr com.apple.quarantine /Applications/MacDirStat.app
+```
 
-| Action | How |
+### Seeing everything
+
+macOS protects some folders (Mail, Messages, other users' homes, and so on). To map a whole disk, grant
+MacDirStat **Full Disk Access** in System Settings › Privacy & Security. Without it, the footer shows how many
+folders it couldn't read.
+
+## Usage
+
+Pick your home folder, Macintosh HD, or any folder. You can also drop a folder onto the window, or start from a
+terminal:
+
+```bash
+open /Applications/MacDirStat.app --args --scan ~/Downloads
+```
+
+| Action | Shortcut |
 |---|---|
-| Select | click a tile or a row |
-| Dive into a folder | double-click, or ⌘↓ |
-| Zoom out / to the top | ⌘↑ / ⇧⌘↑, or the breadcrumbs |
-| Reveal / Copy path / Trash | right-click, ⌥⌘F, ⇧⌘C, ⌘⌫ |
-| Rescan | ⌘R (or right-click › Rescan This Folder) |
+| Map a folder | ⌘O |
+| Rescan | ⌘R (right-click › Rescan This Folder for just one folder) |
+| Zoom into selection / out / to top | ⌘↓ / ⌘↑ / ⇧⌘↑ |
+| Reveal in Finder / Copy path | ⌥⌘F / ⇧⌘C |
+| Move to Trash | ⌘⌫ (asks first) |
+| Toggle map labels | ⌘L |
+| Switch theme | ⌘1 – ⌘4 |
 
-## Safety notes
+Moving something to the Trash doesn't free space until you empty the Trash.
 
-- Before it moves anything to the Trash or rescans a folder, it checks that the path still leads to the same
-  scanned object: no ancestor has been swapped for a symlink, and the inode hasn't changed. If either check
-  fails, it leaves the file alone.
-- Moving something to the Trash doesn't free space until you empty the Trash.
-- After a trash or rescan, a hard-linked file is still counted exactly once, as long as any of its links
-  remain in the tree.
-
-## Layout
+## How it works
 
 ```
 Sources/MacDirStat/
-  Model/      FileNode, DiskScanner (getattrlistbulk), ExtensionRegistry,
-              TreeSafety (identity checks, hard-link registry, tree edits)
-  Treemap/    TreemapLayout (squarify + cushions), TreemapRenderer (pixels + sketch), TreemapView (NSView)
-  Views/      SwiftUI shell, DirectoryOutline (NSOutlineView), welcome/scanning screens
-  Support/    Theme palettes, Sketch (rough.js-style wobbly paths), formatting & whimsy
+  Model/      FileNode tree, DiskScanner (getattrlistbulk + worker pool), ExtensionRegistry,
+              TreeSafety (identity checks, hard-link bookkeeping, tree edits)
+  Treemap/    TreemapLayout (squarify + cushion coefficients), TreemapRenderer (pixels + sketch pass),
+              TreemapView (NSView: hit-testing, overlays)
+  Views/      SwiftUI shell, DirectoryOutline (NSOutlineView), welcome and scanning screens
+  Support/    Themes, Sketch (rough.js-style wobbly paths), formatting and whimsy
+Tests/        Swift Testing suite, run against real files in a temporary folder
 Scripts/      build-app.sh, test.sh, make-icon.swift
-Tests/        Swift Testing suite (real on-disk fixtures)
 ```
+
+- **The layout only goes as deep as there are pixels.** It runs on the main thread and stops at tiles too small
+  to see, so it stays cheap even with millions of files. The pixel shading runs on background threads and can
+  be cancelled. The new picture and its click targets appear together, so what you click is what you see.
+- **The tree is only changed on the main thread, through `TreeEdit`.** This keeps totals, sort order and
+  hard-link ownership consistent after trashing or rescanning.
+- **Nothing touches the disk without `FileIdentity.verify`.** The scan starts from a symlink-free path and
+  records each item's inode. Before trashing or rescanning, the path must still resolve to the same object.
+
+## Development
+
+```bash
+./Scripts/test.sh        # run the tests (works with just the Command Line Tools)
+./Scripts/build-app.sh   # release build → build/MacDirStat.app
+```
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Acknowledgements
+
+- [WinDirStat](https://windirstat.net/) and KDirStat, for the idea and the tree + types + treemap layout.
+  MacDirStat is an independent project and shares no code with them.
+- Jarke J. van Wijk and Huub van de Wetering, *Cushion Treemaps* (1999).
+- Mark Bruls, Kees Huizing and Jarke J. van Wijk, *Squarified Treemaps* (2000).
+- [Rough.js](https://roughjs.com/), which inspired the hand-drawn strokes.
+
+## License
+
+[MIT](LICENSE)

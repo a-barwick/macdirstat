@@ -396,7 +396,7 @@ final class NameCell: NSTableCellView {
         }
         icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         icon.contentTintColor = tint
-        label.stringValue = node.isRoot ? node.path : node.name
+        label.stringValue = node.isRoot ? Format.path(node.path) : node.name
         label.textColor = theme.ink.nsColor
         label.font = node.isRoot ? .systemFont(ofSize: 12.5, weight: .semibold) : .systemFont(ofSize: 12.5)
         toolTip = node.unreadable ? "Couldn't peek inside — permission denied" : nil

@@ -133,7 +133,7 @@ struct FooterBar: View {
             if let node = hover.node ?? state.selection {
                 Image(systemName: node.isDirectory ? "folder.fill" : "doc.fill")
                     .foregroundStyle(node.isDirectory ? theme.accent.color : state.color(for: node).color)
-                Text(node.path)
+                Text(Format.path(node.path))
                     .font(.system(size: 11.5))
                     .foregroundStyle(theme.ink.color)
                     .lineLimit(1)
