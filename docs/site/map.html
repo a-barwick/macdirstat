@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Map · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>The Map</h1>
+<p class="lede">The Map computes its rectangles on the main thread, shades them on a background queue, and shows the picture and its click targets at the same moment.</p>
+
+<div class="card"><div class="flow">
+  <div class="node c3"><b><code>sync</code> in <code>TreemapCanvas</code></b><small>Runs when SwiftUI updates the view or the window changes.</small></div>
+  <div class="arrow">↓ <span class="lbl">view root, tree version, theme, style, labels, size, scale</span></div>
+  <div class="node decide">Did any of those values change?</div>
+  <div class="branch">
+    <div class="node"><b>No</b><small>A changed selection or extension redraws only its overlay.</small></div>
+    <div class="node c3"><b>Yes</b><small><code>rebuild</code> cancels any render in progress and runs <code>TreemapLayout.build</code> on the main thread. A size-only change waits 0.12 seconds first.</small></div>
+  </div>
+  <div class="arrow">↓ <span class="lbl"><code>TreemapRenderJob</code>, with no node references</span></div>
+  <div class="node c3"><b><code>TreemapRenderer.render</code></b><small>Runs on the <code>treemap.render</code> queue and shades leaves across all cores.</small></div>
+  <div class="arrow">↓ <span class="lbl"><code>CGImage</code>, or nil if cancelled</span></div>
+  <div class="node c3"><b><code>TreemapCanvas</code> on the main thread</b><small>Sets the image and the layout in one transaction if its render token is still current.</small></div>
+</div></div>
+
+<section><h2>Why the layout stays small</h2>
+<ul class="pts">
+  <li><code>squarify</code> places children biggest first, and stops when the child that would start the next row covers too few pixels. Smaller children can still land inside a row. The limit is 2 square pixels or 1.2 square points, whichever is larger.</li>
+  <li>The children it didn't place become one gray lump in their parent's rectangle.</li>
+  <li>The layout visits only nodes that get a rectangle, so the pixels available bound its work whatever the number of files.</li>
+  <li>Selecting a node with no item of its own marks its nearest ancestor that has one.</li>
+</ul></section>
+
+<section><h2>What a click reaches</h2>
+<div class="card"><table class="stack">
+  <tr><th>Input</th><th>Result</th></tr>
+  <tr><td>Move</td><td>The footer shows the path and size of the deepest item under the pointer.</td></tr>
+  <tr><td>Click</td><td>The node becomes the selection, and The Tree scrolls to it.</td></tr>
+  <tr><td>Double-click</td><td>The folder becomes the view root. On a file, its parent folder becomes the view root.</td></tr>
+  <tr><td>Right-click</td><td>The node becomes the selection, and the same menu as The Tree opens.</td></tr>
+  <tr><td>Any of these during a render</td><td>Nothing, because the picture on screen is about to change. The pointer lookup returns no node until the new image lands.</td></tr>
+</table></div>
+<p>Hit testing uses only the layout that matches the current image, so a click resolves to the tile on screen.</p></section>
+
+<section><h2>The two styles</h2>
+<div class="shots">
+  <div><img class="shot" src="img/sketchbook.jpg" alt="The Map in Sketchbook style on the Ivory theme"><p class="note">Sketchbook</p></div>
+  <div><img class="shot" src="img/cushions-slate.jpg" alt="The Map in Cushions style on the Slate theme"><p class="note">Cushions</p></div>
+</div>
+<div class="card"><table class="stack">
+  <tr><th>Style</th><th>Shading</th><th>Lines</th></tr>
+  <tr><td>Sketchbook</td><td>Nearly flat, with more grain. This is the default.</td><td>Pencil hatching on files at least 26 points on each side, fine edges on tiles, and wobbly outlines around top-level items and second-level folders.</td></tr>
+  <tr><td>Cushions</td><td>Van Wijk cushions, where each nested level adds a ridge to the lighting.</td><td>One thin seam around each top-level item.</td></tr>
+</table></div>
+<ul class="pts">
+  <li>Both styles use the same rectangles. They differ in ridge height and in the lighting and vector passes.</li>
+  <li>Name tags appear on top-level items at least 80 by 30 points, and on second-level folders at least 120 by 60 points. ⌘L turns them off.</li>
+</ul></section>
+
+<section><h2>Highlighting a file type</h2>
+<ul class="pts"><li>A click in File Types sets <code>selectedExtension</code>.</li><li><code>TreemapCanvas</code> outlines each file leaf with that <code>extID</code> in an overlay layer, with no new render.</li><li>A file inside a gray lump gets no outline.</li></ul></section>
+
+<details class="sources"><summary>Sources</summary><p><code>Sources/MacDirStat/Treemap/TreemapView.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapLayout.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapRenderer.swift</code> · <code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Views/MainView.swift</code> · <code>Sources/MacDirStat/Support/Theme.swift</code></p></details>
+</body>
+</html>

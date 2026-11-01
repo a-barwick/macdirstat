@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>MacDirStat</h1>
+<p class="lede">A macOS app that scans a folder and shows where its disk space went, as a sortable tree, a list of file types and a treemap.</p>
+
+<img class="shot" src="img/sketchbook.jpg" alt="The MacDirStat window, with The Tree and File Types above The Map">
+
+<section><h2>The parts</h2>
+<div class="card">
+<svg class="wide" viewBox="0 0 900 370" width="100%" role="img" aria-label="AppState sends a path to DiskScanner, which reads the disk and returns a root FileNode. AppState checks a node with FileIdentity, trashes it on the disk, and edits the FileNode tree through TreeEdit. The views read the tree and send user actions to AppState.">
+  <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b6474"/></marker></defs>
+  <rect x="10" y="20" width="90" height="340" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="55" y="195" text-anchor="middle" font-size="15" font-weight="700">Disk</text>
+  <rect x="230" y="20" width="150" height="70" rx="10" fill="#e7f4ef" stroke="#0c7a5f" stroke-width="2"/><text x="305" y="52" text-anchor="middle" font-size="14" font-weight="700" fill="#0c7a5f">DiskScanner</text><text x="305" y="71" text-anchor="middle" font-size="13" fill="#0c7a5f">worker threads</text>
+  <rect x="230" y="140" width="150" height="70" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="305" y="172" text-anchor="middle" font-size="14" font-weight="700">FileIdentity</text><text x="305" y="191" text-anchor="middle" font-size="13" fill="#4a5163">checks a path</text>
+  <rect x="510" y="20" width="130" height="190" rx="10" fill="#eef0ff" stroke="#2f2fd0" stroke-width="2"/><text x="575" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#2f2fd0">AppState</text><text x="575" y="127" text-anchor="middle" font-size="13" fill="#2f2fd0">main thread</text>
+  <rect x="590" y="280" width="130" height="60" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="655" y="315" text-anchor="middle" font-size="14" font-weight="700">TreeEdit</text>
+  <rect x="770" y="280" width="120" height="60" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="830" y="315" text-anchor="middle" font-size="14" font-weight="700">FileNode tree</text>
+
+  <rect x="740" y="20" width="150" height="208" rx="10" fill="#f7f5ef" stroke="#d9d4c7" stroke-width="2"/><text x="815" y="41" text-anchor="middle" font-size="13" font-weight="700" fill="#4a5163">Panels</text>
+  <rect x="750" y="50" width="130" height="50" rx="8" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="815" y="72" text-anchor="middle" font-size="13" font-weight="700">DirectoryOutline</text><text x="815" y="89" text-anchor="middle" font-size="13" fill="#4a5163">The Tree</text>
+  <rect x="750" y="108" width="130" height="50" rx="8" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="815" y="130" text-anchor="middle" font-size="13" font-weight="700">ExtensionList</text><text x="815" y="147" text-anchor="middle" font-size="13" fill="#4a5163">File Types</text>
+  <rect x="750" y="166" width="130" height="50" rx="8" fill="#faf0e4" stroke="#a8551c" stroke-width="2"/><text x="815" y="188" text-anchor="middle" font-size="13" font-weight="700" fill="#a8551c">TreemapCanvas</text><text x="815" y="205" text-anchor="middle" font-size="13" fill="#a8551c">The Map</text>
+
+  <path d="M100 55 H226" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="165" y="46" text-anchor="middle" font-size="13" fill="#4a5163">names, sizes, inodes</text>
+  <path d="M100 175 H226" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="165" y="166" text-anchor="middle" font-size="13" fill="#4a5163">current inode</text>
+  <path d="M510 38 H384" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="445" y="31" text-anchor="middle" font-size="13" fill="#4a5163">path</text>
+  <path d="M380 72 H506" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="445" y="88" text-anchor="middle" font-size="13" fill="#4a5163">root FileNode</text>
+  <path d="M510 158 H384" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="445" y="151" text-anchor="middle" font-size="13" fill="#4a5163">node</text>
+  <path d="M380 192 H506" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="445" y="208" text-anchor="middle" font-size="13" fill="#4a5163">URL or failure</text>
+  <path d="M540 210 V330 H104" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="320" y="321" text-anchor="middle" font-size="13" fill="#4a5163">trashItem with the checked URL</text>
+  <path d="M640 60 H736" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="688" y="52" text-anchor="middle" font-size="13" fill="#4a5163">root, selection</text>
+  <path d="M740 170 H644" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="692" y="162" text-anchor="middle" font-size="13" fill="#4a5163">user actions</text>
+  <path d="M625 210 V276" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="634" y="244" font-size="13" fill="#4a5163">node, fresh subtree</text>
+  <path d="M720 310 H766" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="743" y="302" text-anchor="middle" font-size="13" fill="#4a5163">totals</text>
+  <path d="M830 280 V232" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="822" y="272" text-anchor="end" font-size="13" fill="#4a5163">names, sizes</text>
+</svg></div>
+<div class="grid3">
+  <div class="card tight"><p class="keyline"><code>AppState</code> runs the window</p><p class="note">It holds the tree and runs each scan, zoom and trash.</p></div>
+  <div class="card tight"><p class="keyline"><code>DiskScanner</code> reads folders</p><p class="note">Its worker threads build the tree from <code>getattrlistbulk</code> results.</p></div>
+  <div class="card tight"><p class="keyline"><code>TreemapCanvas</code> draws The Map</p><p class="note">Its layout and render steps turn the tree into one image.</p></div>
+</div></section>
+
+<section><h2>A made-up example</h2>
+<ul class="pts">
+  <li>The user runs the app with <code>--scan ~/Downloads</code>.</li>
+  <li><code>DiskScanner</code> finds <span class="mono">Movies/trip.mov</span>, 2.1 GB, with a hard link at <span class="mono">Archive/trip.mov</span>, and counts its size once.</li>
+  <li>The Map shows <span class="mono">Movies</span> as a large tile, and File Types shows <span class="mono">.mov</span> near the top.</li>
+  <li>The user moves <span class="mono">Movies/trip.mov</span> to the Trash, and <span class="mono">Archive/trip.mov</span> takes over the 2.1 GB.</li>
+</ul>
+<div class="grid3">
+  <a class="card tight go" href="scan.html"><b>Following a scan</b><span>From the path to the window.</span></a>
+  <a class="card tight go" href="map.html"><b>The Map</b><span>From the tree to a clickable image.</span></a>
+  <a class="card tight go" href="edits.html"><b>Trash and rescan</b><span>How the disk and the tree change.</span></a>
+</div></section>
+
+<details class="sources"><summary>Sources</summary><p><code>README.md</code> · <code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Model/DiskScanner.swift</code> · <code>Sources/MacDirStat/Model/TreeSafety.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapView.swift</code> · <code>Sources/MacDirStat/Views/MainView.swift</code> · <code>Sources/MacDirStat/Views/DirectoryOutline.swift</code></p></details>
+</body>
+</html>

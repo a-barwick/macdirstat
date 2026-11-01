@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patterns · Shortly</title>
+<link rel="stylesheet" href="../assets/site/site.css">
+<script src="patterns-data.js" defer></script>
+<script src="../assets/site/site.js" defer></script>
+</head>
+<body>
+<!-- Every component the site has. Shortly, a URL shortener, is made up: copy the markup, not the names or the content. -->
+<h1>Patterns</h1>
+<p class="lede">Each section is one component, with the kind of idea it shows.</p>
+
+<!-- A sequence, with parts in color and what passes written on each arrow. -->
+<section><h2>Flow: a path through the system</h2>
+<div class="card"><div class="flow">
+  <div class="node c1"><b>Browser</b><small>Sends the long URL.</small></div>
+  <div class="arrow">↓ <span class="lbl">POST /links with the URL</span></div>
+  <div class="node c2"><b>API</b><small>Checks the URL and picks a code.</small></div>
+  <div class="arrow">↓ <span class="lbl">code and URL</span></div>
+  <div class="node"><b>Postgres</b><small>Saves the link.</small></div>
+</div></div></section>
+
+<!-- A choice. Start each branch with the answer, and keep the columns about the same depth. -->
+<section><h2>Decision: a choice with two outcomes</h2>
+<div class="card"><div class="flow">
+  <div class="node c2"><b>API</b><small>Receives GET /x7Qp.</small></div>
+  <div class="arrow">↓ <span class="lbl">code</span></div>
+  <div class="node decide">Is the code in the cache?</div>
+  <div class="branch">
+    <div class="node"><b>Yes</b><small>The API redirects without reading Postgres.</small></div>
+    <div class="node"><b>No</b><small>The API reads Postgres, fills the cache, then redirects.</small></div>
+  </div>
+</div></div></section>
+
+<!-- The life of one thing. Use run, waitst and term. -->
+<section><h2>States: the life of one record</h2>
+<div class="card"><div class="states" role="img" aria-label="Preview job states">
+  <span class="state waitst">Queued</span>
+  <span class="state-arrow">→<small>worker claims it</small></span>
+  <span class="state run">Running</span>
+  <span class="state-arrow">→<small>page fetched</small></span>
+  <span class="state term">Done</span>
+  <span class="state-arrow">·</span>
+  <span class="state term">Failed</span>
+</div></div></section>
+
+<!-- The signature page: one input followed step by step. The map stays beside the steps on a wide screen,
+     and is replaced by a line of system names on a narrow one. Each .tn has data-node. Each .te has
+     data-edge="a-b", which a step lights with 'a>b' or 'b>a' in window.TRACE. See patterns-data.js. -->
+<section><h2>Trace: one input through the system</h2>
+<div class="trace">
+  <div class="card"><div class="seq">
+    <div class="step c1"><div class="n">1</div><div><b class="t">The browser sends the URL</b><span class="boundary">saved</span>
+      <ul class="pts"><li><code>POST /links</code> validates the URL and writes one row.</li><li>Sending the same custom code twice returns a 409.</li></ul></div></div>
+    <div class="step c2"><div class="n">2</div><div><b class="t">The API queues a preview and replies</b>
+      <ul class="pts"><li>The reply doesn't wait for the preview.</li></ul></div></div>
+    <div class="step c3"><div class="n">3</div><div><b class="t">The worker saves the preview</b>
+      <ul class="pts"><li>A failed fetch leaves the link working without a preview.</li></ul></div></div>
+  </div></div>
+  <aside class="trace-map" aria-label="Which systems the current step uses">
+    <p class="trace-cap" id="traceCap"></p>
+    <svg viewBox="0 0 300 300" role="img" aria-label="System map highlighting the current step">
+      <defs><marker id="trace-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3d4557"/></marker></defs>
+      <path class="te" data-edge="browser-api" d="M150 52 V90"/>
+      <path class="te" data-edge="api-postgres" d="M104 134 L52 200"/>
+      <path class="te" data-edge="api-queue" d="M196 134 L248 200"/>
+      <path class="te" data-edge="queue-worker" d="M250 244 L196 262"/>
+      <path class="te" data-edge="worker-postgres" d="M104 262 L50 244"/>
+      <g class="tn c1" data-node="browser"><rect x="96" y="8" width="108" height="44" rx="8"/><text x="150" y="27">Browser</text><text class="sub" x="150" y="41">web page</text></g>
+      <g class="tn c2" data-node="api"><rect x="96" y="90" width="108" height="44" rx="8"/><text x="150" y="109">API</text><text class="sub" x="150" y="123">Node service</text></g>
+      <g class="tn gray" data-node="postgres"><rect x="6" y="200" width="88" height="44" rx="8"/><text x="50" y="219">Postgres</text><text class="sub" x="50" y="233">links</text></g>
+      <g class="tn gray" data-node="queue"><rect x="206" y="200" width="88" height="44" rx="8"/><text x="250" y="219">Queue</text><text class="sub" x="250" y="233">preview jobs</text></g>
+      <g class="tn c3" data-node="worker"><rect x="104" y="250" width="92" height="44" rx="8"/><text x="150" y="269">Worker</text><text class="sub" x="150" y="283">fetches pages</text></g>
+    </svg>
+  </aside>
+</div></section>
+
+<!-- SVG when position carries meaning. class="wide" keeps it readable on a phone, where its card scrolls.
+     Text 12px or larger in a 700-wide viewBox stays legible. Don't let lines cross boxes or text. -->
+<section><h2>SVG: parts and how they connect</h2>
+<div class="card">
+<svg class="wide" viewBox="0 0 700 170" width="100%" role="img" aria-label="The browser calls the API, which uses Postgres and a queue read by the worker">
+  <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b6474"/></marker></defs>
+  <rect x="10" y="50" width="130" height="64" rx="10" fill="#eef0ff" stroke="#2f2fd0" stroke-width="2"/><text x="75" y="88" text-anchor="middle" font-size="15" font-weight="700" fill="#2f2fd0">Browser</text>
+  <rect x="250" y="50" width="150" height="64" rx="10" fill="#e7f4ef" stroke="#0c7a5f" stroke-width="2"/><text x="325" y="88" text-anchor="middle" font-size="15" font-weight="700" fill="#0c7a5f">API</text>
+  <rect x="540" y="10" width="150" height="56" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="615" y="44" text-anchor="middle" font-size="15" font-weight="700">Postgres</text>
+  <rect x="540" y="100" width="150" height="56" rx="10" fill="#faf0e4" stroke="#a8551c" stroke-width="2"/><text x="615" y="134" text-anchor="middle" font-size="15" font-weight="700" fill="#a8551c">Worker</text>
+  <path d="M140 82 H246" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="195" y="72" text-anchor="middle" font-size="12" fill="#4a5163">POST /links</text>
+  <path d="M400 70 L536 40" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="462" y="40" text-anchor="middle" font-size="12" fill="#4a5163">rows</text>
+  <path d="M400 94 L536 126" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="462" y="130" text-anchor="middle" font-size="12" fill="#4a5163">jobs</text>
+</svg></div></section>
+
+<!-- A set of things. One row per thing, one column per property, with a short name first. data-flow adds a Data button. class="stack" stacks the rows on a phone, so use it with three or more columns. -->
+<section><h2>Table: a set of things</h2>
+<div class="card"><table class="stack">
+  <tr><th>Job</th><th>Runs</th><th>What it changes</th></tr>
+  <tr><td>Preview</td><td>After each new link</td><td>Saves the page title on the link.</td></tr>
+  <tr data-flow="expire"><td>Sweep</td><td>Hourly</td><td>Deletes links past their expiry date.</td></tr>
+</table></div></section>
+
+<!-- Where to look. .map keeps the first column wide. -->
+<section><h2>Map: where to look</h2>
+<div class="card"><table class="map">
+  <tr><th>If you're looking for</th><th>Look in</th></tr>
+  <tr><td>Creating a link</td><td><span class="mono">src/api/links.ts</span></td></tr>
+  <tr><td>The preview job</td><td><span class="mono">src/jobs/preview.ts</span></td></tr>
+</table></div></section>
+
+<!-- Short points that belong together. Use grid2 or grid3, and link with .go. -->
+<section><h2>Cards: short points side by side</h2>
+<div class="grid3">
+  <div class="card tight"><p class="keyline">The API takes requests</p><p class="note">It validates, saves and replies.</p></div>
+  <div class="card tight"><p class="keyline">The worker runs jobs</p><p class="note">Each job fetches one page.</p></div>
+  <div class="card tight"><p class="keyline">Postgres keeps links</p><p class="note">Redirects read from the cache first.</p></div>
+</div>
+<div class="grid2">
+  <a class="card tight go" href="#trace-one-input-through-the-system"><b>Following a link</b><span>One URL, step by step.</span></a>
+  <a class="card tight go" href="#table-a-set-of-things"><b>Jobs</b><span>What runs after a request.</span></a>
+</div></section>
+
+<!-- Input and output, for chat tools, CLIs and anything with a back and forth. -->
+<section><h2>Exchange: input and output</h2>
+<div class="card">
+  <p><span class="say me">shortly add https://example.com/spring-sale</span></p>
+  <p><span class="say">Created https://sho.rt/x7Qp</span></p>
+</div></section>
+
+<!-- Details most readers don't need. One per page at most. -->
+<section><h2>More: details on request</h2>
+<ul class="pts"><li>Codes are four characters long.</li><li>Links expire after a year without a visit.</li></ul>
+<details class="more"><summary>All limits</summary><div class="card tight"><table>
+  <tr><th>Limit</th><th>Value</th></tr><tr><td>URL length</td><td>2,048 bytes</td></tr><tr><td>Links per day</td><td>100</td></tr>
+</table></div></details></section>
+
+<!-- Anything not on the default branch. It must read properly when hidden, and the filter appears on its own. -->
+<section><h2>Built and planned</h2>
+<div class="card"><table>
+  <tr><th>Feature</th><th>State</th></tr>
+  <tr><td>Custom codes</td><td>Runs today.</td></tr>
+  <tr class="designed"><td>Click counts</td><td>Saved per day.<span class="tag design">designed</span></td></tr>
+</table></div></section>
+
+<details class="sources"><summary>Sources</summary><p><code>src/api/links.ts</code> · <code>src/jobs/preview.ts</code></p></details>
+</body>
+</html>

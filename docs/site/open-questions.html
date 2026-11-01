@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open questions · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>Open questions</h1>
+<p class="lede">The repo doesn't settle these, either because nothing in it measures the claim or because the code's behavior may not be what was intended.</p>
+
+<section><h2>Claims with no evidence in the repo</h2>
+<div class="card"><table class="stack">
+  <tr><th>Claim</th><th>What's missing</th><th>How to settle it</th></tr>
+  <tr><td>About 3 million files in roughly 30 seconds</td><td>The README states this with no benchmark, date or hardware model.</td><td>Time a scan of a whole disk and record the machine.</td></tr>
+  <tr><td>Sizes match <code>du</code></td><td>The test suite compares totals to <code>st_blocks</code>, and nothing runs <code>du</code>. APFS clones and compressed files aren't covered.</td><td>Compare a scan to <code>du</code> on a folder that holds clones.</td></tr>
+  <tr><td>The Tree stays fast with 100k entries</td><td>A code comment and the README state this, with no measurement.</td><td>Open a generated folder of that size and record scroll and sort times.</td></tr>
+  <tr><td>Skipping <code>/System/Volumes</code> prevents double counting</td><td>The reason is in a code comment. No test scans <code>/</code>.</td><td>Scan Macintosh HD and compare the total to the volume's used space.</td></tr>
+  <tr><td>Intel builds work</td><td>The workflow builds x86_64 and the tests run on the runner's own architecture. Nothing records a launch on an Intel Mac.</td><td>Launch a release build on an Intel Mac.</td></tr>
+</table></div></section>
+
+<section><h2>Questions about published releases</h2>
+<ul class="pts">
+  <li>The repo has a <code>v1.0.0</code> tag. It doesn't record whether the Release workflow succeeded for that tag.</li>
+  <li>Repository secrets aren't visible from the code, so the repo can't show whether published builds are signed. The README says they aren't.</li>
+  <li>The first-launch steps in the README depend on macOS behavior, and the repo has no record of them being checked on each macOS version.</li>
+</ul></section>
+
+<section><h2>Behavior that may not be intended</h2>
+<div class="card"><table class="stack">
+  <tr><th>Behavior</th><th>Why it's in question</th><th>Where</th></tr>
+  <tr><td>A full rescan of an unreadable root replaces the tree with an empty map</td><td>Commit <span class="mono">bbe1e3b</span> says to keep previous results when a rescan can't read the folder. The code does that only for a folder rescan.</td><td class="nw"><code>finishScan</code></td></tr>
+  <tr><td>A listing that fails partway reports no error</td><td><code>getattrlistbulk</code> errors mark a folder unreadable only if no entries came back first. Errors on single entries are skipped with no count. Both can undercount a folder with no sign in the footer.</td><td class="nw"><code>scanDirectory</code></td></tr>
+  <tr><td>The Trash alert quotes a hard link's size</td><td>The alert and toast use the node's size. Trashing an owner quotes the full allocation even though another link keeps the blocks. Trashing a non-owner quotes zero bytes.</td><td class="nw"><code>moveToTrash</code></td></tr>
+  <tr><td>Dropping a file maps that one file</td><td>The drop handler accepts any file URL and the scanner has a branch for a non-directory root. The welcome screen and README mention only folders.</td><td class="nw"><code>ContentView</code></td></tr>
+</table></div></section>
+
+<details class="sources"><summary>Sources</summary><p><code>README.md</code> · <code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Model/DiskScanner.swift</code> · <code>Sources/MacDirStat/Views/ContentView.swift</code> · <code>Sources/MacDirStat/Views/DirectoryOutline.swift</code> · <code>.github/workflows/release.yml</code> · <code>Scripts/build-app.sh</code></p></details>
+</body>
+</html>

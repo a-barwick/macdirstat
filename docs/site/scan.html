@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Following a scan · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="scan-data.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>Following a scan</h1>
+<p class="lede">The user starts the app with <code>--scan ~/Downloads</code>, and seven steps later the window shows that folder's tree and map.</p>
+
+<section><h2>From path to window</h2>
+<div class="trace">
+  <div class="card"><div class="seq">
+    <div class="step c1"><div class="n">1</div><div><b class="t">The app reads the path</b>
+      <ul class="pts"><li><code>MacDirStatApp</code> finds <code>--scan</code>, expands the tilde and calls <code>scan</code> on <code>AppState</code>.</li><li>The welcome buttons, ⌘O, a dropped item and a Finder open all call the same method.</li></ul></div></div>
+    <div class="step c2"><div class="n">2</div><div><b class="t">A scanner starts its workers</b>
+      <ul class="pts"><li><code>AppState</code> cancels any running scan, sets the phase to scanning and starts a background job.</li><li><code>DiskScanner</code> resolves symlinks in the path, so the root's name is a symlink-free path.</li><li>It starts twice as many workers as active cores, with a minimum of 4 and a maximum of 24.</li></ul></div></div>
+    <div class="step c2"><div class="n">3</div><div><b class="t">Workers read each directory</b>
+      <ul class="pts"><li>Each worker takes a directory from a shared last-in, first-out stack and pushes the subfolders it finds.</li><li><code>getattrlistbulk</code> returns names, types, sizes and inodes for a whole directory in a few calls, which replaces one <code>lstat</code> per entry.</li><li><span class="mono">Movies/trip.mov</span> has two links, so whichever link a worker reaches first keeps the 2.1 GB and the other gets size 0.</li></ul></div></div>
+    <div class="step c1"><div class="n">4</div><div><b class="t">The window shows progress</b>
+      <ul class="pts"><li>Every 0.1 seconds a timer copies the file, folder and byte counters and the current path to <code>AppState</code>.</li><li><code>ScanningView</code> draws them. Its Never mind button or the Esc key cancels the scan.</li></ul></div></div>
+    <div class="step c2"><div class="n">5</div><div><b class="t">The scanner adds up totals</b>
+      <ul class="pts"><li><code>finalize</code> walks the tree from the bottom up, totals each folder and sorts its children biggest first.</li><li>A modified time more than a day in the future doesn't count toward a folder's Last Change.</li></ul></div></div>
+    <div class="step c1"><div class="n">6</div><div><b class="t">The main thread takes the tree</b>
+      <ul class="pts"><li>If a newer scan or a cancel replaced this scanner, the result is dropped and <code>finishScan</code> never runs.</li><li><code>finishScan</code> stores the root and the extension totals, and builds the hard-link registry.</li><li>The 14 biggest extensions get the palette's colors in order. Every other extension gets a muted color derived from its ID.</li></ul></div></div>
+    <div class="step c3"><div class="n">7</div><div><b class="t">The panels draw it</b>
+      <ul class="pts"><li>The phase becomes ready and <code>treeVersion</code> goes up.</li><li>The Tree opens the root, and its biggest item if that item is a folder. File Types lists the extensions. <a href="map.html">The Map</a> starts its layout and render.</li></ul></div></div>
+  </div></div>
+  <aside class="trace-map" aria-label="Which systems the current step uses">
+    <p class="trace-cap" id="traceCap"></p>
+    <svg viewBox="0 0 300 300" role="img" aria-label="System map highlighting the current step">
+      <defs><marker id="trace-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3d4557"/></marker></defs>
+      <path class="te" data-edge="app-state" d="M150 52 V90"/>
+      <path class="te" data-edge="state-scanner" d="M112 134 L70 176"/>
+      <path class="te" data-edge="disk-scanner" d="M64 256 V220"/>
+      <path class="te" data-edge="scanner-tree" d="M122 198 H172"/>
+      <path class="te" data-edge="state-tree" d="M188 134 L226 176"/>
+      <path class="te" data-edge="tree-views" d="M226 220 V256"/>
+      <path class="te" data-edge="state-views" d="M212 112 H292 V276 H284"/>
+      <g class="tn gray" data-node="app"><rect x="88" y="8" width="124" height="44" rx="8"/><text x="150" y="27">MacDirStatApp</text><text class="sub" x="150" y="41">reads arguments</text></g>
+      <g class="tn c1" data-node="state"><rect x="88" y="90" width="124" height="44" rx="8"/><text x="150" y="109">AppState</text><text class="sub" x="150" y="123">main thread</text></g>
+      <g class="tn c2" data-node="scanner"><rect x="6" y="176" width="116" height="44" rx="8"/><text x="64" y="195">DiskScanner</text><text class="sub" x="64" y="209">worker threads</text></g>
+      <g class="tn gray" data-node="disk"><rect x="6" y="256" width="116" height="40" rx="8"/><text x="64" y="274">Disk</text><text class="sub" x="64" y="287">~/Downloads</text></g>
+      <g class="tn gray" data-node="tree"><rect x="172" y="176" width="108" height="44" rx="8"/><text x="226" y="195">FileNode tree</text><text class="sub" x="226" y="209">in memory</text></g>
+      <g class="tn gray" data-node="views"><rect x="172" y="256" width="112" height="40" rx="8"/><text x="228" y="274">Views</text><text class="sub" x="228" y="287">SwiftUI and AppKit</text></g>
+    </svg>
+  </aside>
+</div></section>
+
+<section><h2>How a scan can end</h2>
+<div class="card"><table class="stack">
+  <tr><th>Outcome</th><th>When</th><th>What the user sees</th></tr>
+  <tr><td>Finished</td><td>Every directory on the stack was read.</td><td>The tree, File Types and The Map, with the time taken in the footer.</td></tr>
+  <tr><td>Cancelled</td><td>The user pressed Never mind.</td><td>The previous tree if there was one, otherwise the welcome screen. The partial result is dropped.</td></tr>
+  <tr><td>Missing</td><td>The path doesn't resolve.</td><td>A toast that says the folder couldn't be read, on top of the previous tree or the welcome screen.</td></tr>
+  <tr><td>Root unreadable</td><td>The path exists and its directory can't be opened.</td><td>A map with an empty root. This replaces any previous tree.</td></tr>
+  <tr><td>Some folders unreadable</td><td>A folder below the root can't be opened.</td><td>The rest of the tree, a lock icon on that folder and a count in the footer.</td></tr>
+</table></div></section>
+
+<section><h2>What the numbers count</h2>
+<ul class="pts">
+  <li>Size is the allocated bytes that <code>getattrlistbulk</code> reports, so a sparse file can be smaller than its logical size.</li>
+  <li>A symlink is a node with its own size. The scanner doesn't follow it.</li>
+  <li>A scan doesn't enter <code>/System/Volumes</code>, <code>/Volumes</code>, <code>/dev</code>, <code>/net</code>, <code>/home</code>, <code>/.vol</code>, <code>/.nofollow</code> or <code>/.resolve</code>. These are volume mounts, the Data-volume mirror and virtual file systems. The list applies to folders found during a scan, so a user can still pick a path such as <span class="mono">/Volumes/Backup</span> as the root.</li>
+</ul></section>
+
+<details class="sources"><summary>Sources</summary><p><code>Sources/MacDirStat/MacDirStatApp.swift</code> · <code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Model/DiskScanner.swift</code> · <code>Sources/MacDirStat/Model/ExtensionRegistry.swift</code> · <code>Sources/MacDirStat/Support/Theme.swift</code> · <code>Sources/MacDirStat/Views/ContentView.swift</code> · <code>Sources/MacDirStat/Views/ScanningView.swift</code> · <code>Sources/MacDirStat/Views/WelcomeView.swift</code> · <code>Sources/MacDirStat/Views/DirectoryOutline.swift</code> · <code>Sources/MacDirStat/Views/MainView.swift</code></p></details>
+</body>
+</html>

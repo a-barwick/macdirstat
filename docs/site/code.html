@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code map · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>Code map</h1>
+<p class="lede">All the app's code is in one Swift package target, under <code>Sources/MacDirStat</code>, with no third-party dependencies.</p>
+
+<section><h2>The app and its state</h2>
+<div class="card"><table class="map">
+  <tr><th>If you're looking for</th><th>Look in</th></tr>
+  <tr><td>Menus, shortcuts and <code>--scan</code></td><td><code>Sources/MacDirStat/MacDirStatApp.swift</code></td></tr>
+  <tr><td>Starting, cancelling and finishing a scan</td><td><code>Sources/MacDirStat/AppState.swift</code></td></tr>
+  <tr><td>Trash, folder rescan, zoom and the context menu</td><td><code>Sources/MacDirStat/AppState.swift</code></td></tr>
+</table></div></section>
+
+<section><h2>Scanning and the tree</h2>
+<div class="card"><table class="map">
+  <tr><th>If you're looking for</th><th>Look in</th></tr>
+  <tr><td>Workers, <code>getattrlistbulk</code>, skipped paths and totals</td><td><code>Sources/MacDirStat/Model/DiskScanner.swift</code></td></tr>
+  <tr><td>Node fields and how a child's totals reach its ancestors</td><td><code>Sources/MacDirStat/Model/FileNode.swift</code></td></tr>
+  <tr><td>The identity check, tree edits and hard-link owners</td><td><code>Sources/MacDirStat/Model/TreeSafety.swift</code></td></tr>
+  <tr><td>Extension parsing and per-extension totals</td><td><code>Sources/MacDirStat/Model/ExtensionRegistry.swift</code></td></tr>
+</table></div></section>
+
+<section><h2>The Map</h2>
+<div class="card"><table class="map">
+  <tr><th>If you're looking for</th><th>Look in</th></tr>
+  <tr><td>Squarify, cushion ridges and hit testing</td><td><code>Sources/MacDirStat/Treemap/TreemapLayout.swift</code></td></tr>
+  <tr><td>Pixel shading, hatching, outlines and name tags</td><td><code>Sources/MacDirStat/Treemap/TreemapRenderer.swift</code></td></tr>
+  <tr><td>When to re-render, pointer input and overlays</td><td><code>Sources/MacDirStat/Treemap/TreemapView.swift</code></td></tr>
+  <tr><td>Wobbly lines and hatch paths</td><td><code>Sources/MacDirStat/Support/Sketch.swift</code></td></tr>
+</table></div></section>
+
+<section><h2>The window</h2>
+<div class="card"><table class="map">
+  <tr><th>If you're looking for</th><th>Look in</th></tr>
+  <tr><td>Which screen shows, the header, toasts and drag and drop</td><td><code>Sources/MacDirStat/Views/ContentView.swift</code></td></tr>
+  <tr><td>The panel layout, footer, breadcrumbs and File Types</td><td><code>Sources/MacDirStat/Views/MainView.swift</code></td></tr>
+  <tr><td>The Tree's columns, sorting and row drawing</td><td><code>Sources/MacDirStat/Views/DirectoryOutline.swift</code></td></tr>
+  <tr><td>The welcome screen</td><td><code>Sources/MacDirStat/Views/WelcomeView.swift</code></td></tr>
+  <tr><td>The scanning screen</td><td><code>Sources/MacDirStat/Views/ScanningView.swift</code></td></tr>
+  <tr><td>Buttons, the paper background and swatches</td><td><code>Sources/MacDirStat/Views/Components.swift</code></td></tr>
+  <tr><td>Themes, palette and map styles</td><td><code>Sources/MacDirStat/Support/Theme.swift</code></td></tr>
+  <tr><td>Number formats and playful text</td><td><code>Sources/MacDirStat/Support/Format.swift</code></td></tr>
+</table></div></section>
+
+<section><h2>Builds and releases</h2>
+<div class="card"><table class="map">
+  <tr><th>If you're looking for</th><th>Look in</th></tr>
+  <tr><td>The app bundle, <code>Info.plist</code> and ad-hoc signing</td><td><code>Scripts/build-app.sh</code></td></tr>
+  <tr><td>The DMG, zip, Developer ID signing and notarization</td><td><code>Scripts/package-release.sh</code></td></tr>
+  <tr><td>The app icon</td><td><code>Scripts/make-icon.swift</code></td></tr>
+  <tr><td>Running the tests with or without Xcode</td><td><code>Scripts/test.sh</code></td></tr>
+  <tr><td>CI on pushes and pull requests</td><td><code>.github/workflows/ci.yml</code></td></tr>
+  <tr><td>Publishing a release from a tag</td><td><code>.github/workflows/release.yml</code></td></tr>
+</table></div></section>
+
+<details class="sources"><summary>Sources</summary><p><code>Package.swift</code> · <code>Sources/MacDirStat/</code> · <code>Scripts/</code> · <code>.github/workflows/</code></p></details>
+</body>
+</html>

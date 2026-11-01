@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sources · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>Sources</h1>
+<p class="lede">The repo has a README, a contributing guide and script comments, and the code wins wherever they disagree with it.</p>
+
+<section><h2>What exists</h2>
+<div class="card"><table class="stack">
+  <tr><th>Document</th><th>Covers</th><th>State</th></tr>
+  <tr><td><code>README.md</code></td><td>Features, install steps, usage and shortcuts.</td><td>Mostly matches the code, with the differences listed below.</td></tr>
+  <tr><td><code>CONTRIBUTING.md</code></td><td>Setup, guidelines and the release steps.</td><td>Matches the code except for one rule listed below.</td></tr>
+  <tr><td><code>.github/workflows/release.yml</code></td><td>The release steps and the secrets for signing.</td><td>Its header comment matches the workflow.</td></tr>
+  <tr><td><code>Scripts/package-release.sh</code></td><td>Local packaging and its signing settings.</td><td>Its header comment matches the script.</td></tr>
+  <tr><td><code>docs/sketchbook.jpg</code>, <code>docs/cushions-slate.jpg</code>, <code>docs/welcome.jpg</code></td><td>Screenshots of the app, using a demo folder.</td><td>Show the current window layout. Their dates aren't recorded.</td></tr>
+</table></div></section>
+
+<section><h2>Where they disagree with the code</h2>
+<div class="card"><table class="stack">
+  <tr><th>Document</th><th>Says</th><th>The code</th></tr>
+  <tr><td><code>README.md</code></td><td>Nothing touches the disk without <code>FileIdentity.verify</code>.</td><td>Trash and folder rescan run the check. Reveal in Finder, Open and a full rescan don't.</td></tr>
+  <tr><td><code>CONTRIBUTING.md</code></td><td>Anything that touches the disk must go through <code>FileIdentity.verify</code>.</td><td>The same three actions don't.</td></tr>
+  <tr><td><code>README.md</code></td><td>Big folders get name tags.</td><td>Top-level files get them too, if the tile is big enough.</td></tr>
+  <tr><td><code>README.md</code></td><td>Drop a folder onto the window.</td><td>The drop handler also accepts a file.</td></tr>
+  <tr><td><code>README.md</code></td><td>The <code>Scripts/</code> list names three scripts.</td><td>There are four, and the list leaves out <code>package-release.sh</code>.</td></tr>
+  <tr><td><code>README.md</code></td><td>The shortcut table lists the main actions.</td><td>It leaves out ⇧⌘H for the home folder and ⇧⌘D for Macintosh HD.</td></tr>
+  <tr><td><code>README.md</code></td><td>Tests run against real files in a temporary folder.</td><td>Seven of the ten tests do. The other three use nodes or render jobs in memory.</td></tr>
+  <tr><td>Commit <span class="mono">bbe1e3b</span></td><td>Keep previous results when a rescan can't read the folder.</td><td>A folder rescan keeps them. A full rescan doesn't, as listed in <a href="open-questions.html">Open questions</a>.</td></tr>
+</table></div></section>
+
+<details class="sources"><summary>Sources</summary><p><code>README.md</code> · <code>CONTRIBUTING.md</code> · <code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/MacDirStatApp.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapView.swift</code> · <code>Sources/MacDirStat/Views/ContentView.swift</code> · <code>Tests/MacDirStatTests/TreeSafetyTests.swift</code> · <code>Scripts/</code></p></details>
+</body>
+</html>

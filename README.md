@@ -92,6 +92,8 @@ Moving something to the Trash doesn't free space until you empty the Trash.
 
 ## How it works
 
+Full documentation is in [docs/site/](docs/site/), which `docs/serve.sh` serves locally.
+
 ```
 Sources/MacDirStat/
   Model/      FileNode tree, DiskScanner (getattrlistbulk + worker pool), ExtensionRegistry,

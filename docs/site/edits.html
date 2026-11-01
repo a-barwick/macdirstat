@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trash and rescan · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>Trash and rescan</h1>
+<p class="lede">Moving <span class="mono">Movies/trip.mov</span> to the Trash passes a confirmation and an identity check, then one tree edit updates totals and hard-link owners.</p>
+
+<div class="card"><div class="flow">
+  <div class="node c1"><b><code>moveToTrash</code> in <code>AppState</code></b><small>Starts from ⌘⌫ or the Move to Trash menu item. The root can't be trashed.</small></div>
+  <div class="arrow">↓ <span class="lbl">name and size, shown in an alert</span></div>
+  <div class="node decide">Did the user choose Move to Trash?</div>
+  <div class="branch">
+    <div class="node"><b>No</b><small>Keep It closes the alert, and nothing changes.</small></div>
+    <div class="node"><b>Yes</b><small><code>FileIdentity.verify</code> runs after the alert closes.</small></div>
+  </div>
+  <div class="arrow">↓ <span class="lbl">the node's stored path and inode</span></div>
+  <div class="node decide">Does the path still lead to the scanned object?</div>
+  <div class="branch">
+    <div class="node"><b>No</b><small>A toast gives the reason. The disk and the tree stay as they were.</small></div>
+    <div class="node"><b>Yes</b><small><code>trashItem</code> moves the item. If that fails, a toast shows the error and the tree stays as it was.</small></div>
+  </div>
+  <div class="arrow">↓ <span class="lbl">the trashed node</span></div>
+  <div class="node"><b><code>TreeEdit.remove</code></b><small>Detaches the node, subtracts its totals from each ancestor, re-sorts, and reconciles hard links.</small></div>
+  <div class="arrow">↓ <span class="lbl">new <code>treeVersion</code> and extension totals</span></div>
+  <div class="node"><b>The Tree, File Types and The Map</b><small>Reload from the changed tree.</small></div>
+</div></div>
+
+<section><h2>What the identity check rejects</h2>
+<div class="card"><table class="stack">
+  <tr><th>Failure</th><th>Condition</th></tr>
+  <tr><td><code>unknownIdentity</code></td><td>The node has no recorded inode.</td></tr>
+  <tr><td><code>missing</code></td><td>The parent folder or the item no longer resolves.</td></tr>
+  <tr><td><code>pathRedirected</code></td><td>The parent's path resolves somewhere else, such as a symlink placed where a folder was. A folder moved away with nothing in its place gives <code>missing</code>.</td></tr>
+  <tr><td><code>replaced</code></td><td>The path holds an object with a different inode, or its type changed between file and folder.</td></tr>
+</table></div>
+<p>The check works because each scan root is a symlink-free path, so a stored path only stops resolving to itself when something changed. The check and <code>trashItem</code> are separate calls, so a swap in the moment between them isn't detected.</p>
+</section>
+
+<section><h2>Folder rescan outcomes</h2>
+<p>On a folder below the root, Rescan This Folder runs the identity check, scans the folder on a background queue, and then applies the result on the main thread. On the root it runs a full rescan, with no identity check.</p>
+<div class="card"><table class="stack">
+  <tr><th>Result</th><th>When</th><th>What happens</th></tr>
+  <tr><td>Spliced</td><td>The scan read the folder.</td><td>The fresh subtree replaces the old node, and totals and hard links update.</td></tr>
+  <tr><td>Spliced, with a count</td><td>The folder read, but some folders inside it didn't.</td><td>As above, and a toast gives the count of unreadable folders.</td></tr>
+  <tr><td><code>unreadable</code></td><td>The folder couldn't be listed at all.</td><td>The old numbers stay, and a toast says so.</td></tr>
+  <tr><td><code>staleTarget</code></td><td>The old node left the tree during the scan.</td><td>The result is dropped with no message.</td></tr>
+  <tr><td>Older generation</td><td>A full scan finished or the map closed during the rescan.</td><td>The result is dropped with no message.</td></tr>
+  <tr><td>No result</td><td>The path no longer exists.</td><td>The tree stays as it was, and a toast suggests a full rescan.</td></tr>
+</table></div>
+<p>A full rescan with ⌘R skips this path. It starts a new scan of the root, resolves the path again and replaces the tree when it finishes.</p>
+</section>
+
+<section><h2>How hard links stay counted once</h2>
+<div class="card"><table class="stack">
+  <tr><th>Moment</th><th><span class="mono">Movies/trip.mov</span></th><th><span class="mono">Archive/trip.mov</span></th><th><span class="mono">~/Downloads</span> includes</th></tr>
+  <tr><td>After the scan</td><td>2.1 GB, the owner</td><td>0 bytes</td><td>2.1 GB</td></tr>
+  <tr><td>After trashing the owner</td><td>Removed</td><td>2.1 GB, the new owner</td><td>2.1 GB</td></tr>
+</table></div>
+<ul class="pts">
+  <li><code>HardLinkRegistry</code> keeps every link of every multiply-linked file, grouped by inode, with the file's allocation.</li>
+  <li><code>reconcile</code> drops links that left the tree, keeps one owner and sets that owner's size to the allocation.</li>
+  <li>A folder rescan adds its fresh links and reconciles the same way, so rescanning <span class="mono">Archive</span> doesn't count the file twice.</li>
+</ul></section>
+
+<section><h2>What runs with no identity check</h2>
+<ul class="pts">
+  <li>Reveal in Finder and Open pass the node's stored path straight to <code>NSWorkspace</code>.</li>
+  <li>Copy Path reads no disk state.</li>
+  <li>A full rescan doesn't use the check, because it builds a new tree from the root path.</li>
+</ul></section>
+
+<details class="sources"><summary>Sources</summary><p><code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Model/TreeSafety.swift</code> · <code>Sources/MacDirStat/Model/FileNode.swift</code> · <code>Sources/MacDirStat/Model/DiskScanner.swift</code> · <code>Sources/MacDirStat/MacDirStatApp.swift</code> · <code>Sources/MacDirStat/Views/DirectoryOutline.swift</code></p></details>
+</body>
+</html>

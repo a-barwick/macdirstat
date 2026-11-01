@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Words we use · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>Words we use</h1>
+<p class="lede">Each of these words has one meaning, and most match a name in the code or the app's window.</p>
+
+<section><h2>The window</h2>
+<div class="card"><table class="stack">
+  <tr><th>Word</th><th>Meaning</th><th>In the code</th></tr>
+  <tr><td>The Tree</td><td>The panel that lists folders and files in sortable columns.</td><td><code>DirectoryOutline</code></td></tr>
+  <tr><td>File Types</td><td>The panel that lists extensions by total size.</td><td><code>ExtensionList</code></td></tr>
+  <tr><td>The Map</td><td>The panel that draws the treemap, where a tile's area follows a node's size.</td><td><code>TreemapCanvas</code></td></tr>
+  <tr><td>panel</td><td>One of the three areas in the ready window: The Tree, File Types or The Map.</td><td><code>MainView</code></td></tr>
+  <tr><td>view</td><td>A SwiftUI or AppKit object that draws part of the window. Each panel is one, and so is the scanning screen.</td><td><code>ScanningView</code></td></tr>
+  <tr><td>phase</td><td>Which screen the window shows: welcome, scanning or ready.</td><td><code>Phase</code></td></tr>
+  <tr><td>selection</td><td>The one node that is marked in The Tree and The Map.</td><td><code>selection</code></td></tr>
+  <tr><td>view root</td><td>The node that fills The Map. Zooming changes it.</td><td><code>viewRoot</code></td></tr>
+  <tr><td>style</td><td>How The Map is drawn: Sketchbook or Cushions.</td><td><code>TreemapStyle</code></td></tr>
+  <tr><td>theme</td><td>The window's colors: Ivory, Oat, Clay or Slate. The menu bar calls this menu Paper.</td><td><code>Theme</code></td></tr>
+  <tr><td>toast</td><td>A short message at the bottom of the window that clears after 3.2 seconds.</td><td><code>showToast</code></td></tr>
+</table></div></section>
+
+<section><h2>The tree and its numbers</h2>
+<div class="card"><table class="stack">
+  <tr><th>Word</th><th>Meaning</th><th>In the code</th></tr>
+  <tr><td>scan</td><td>One run of the scanner over a folder. The app's menus call this mapping.</td><td><code>DiskScanner</code></td></tr>
+  <tr><td>tree</td><td>All the nodes from one scan, held in memory.</td><td><code>root</code></td></tr>
+  <tr><td>node</td><td>One file, folder or symlink in the tree.</td><td><code>FileNode</code></td></tr>
+  <tr><td>root</td><td>The top node of the tree. Its name is the full path of the scanned folder.</td><td><code>root</code></td></tr>
+  <tr><td>size</td><td>Bytes allocated on disk. A folder's size is the total for everything below it.</td><td><code>size</code></td></tr>
+  <tr><td>logical size</td><td>A file's length in bytes, which can differ from its allocation.</td><td><code>logicalSize</code></td></tr>
+  <tr><td>extension</td><td>The lowercase text after a file name's last dot, from 1 to 12 bytes long. A name that starts with its only dot has none.</td><td><code>extID</code></td></tr>
+  <tr><td>unreadable</td><td>A folder the scanner couldn't list. It stays in the tree with a lock icon.</td><td><code>unreadable</code></td></tr>
+  <tr><td>owner</td><td>The one link in a hard-link group whose size holds the file's allocation. Every other link in the group has size 0.</td><td><code>HardLinkRegistry</code></td></tr>
+</table></div></section>
+
+<section><h2>Drawing The Map</h2>
+<div class="card"><table class="stack">
+  <tr><th>Word</th><th>Meaning</th><th>In the code</th></tr>
+  <tr><td>tile</td><td>A rectangle on The Map as the user sees it.</td><td><code>rect</code></td></tr>
+  <tr><td>layout</td><td>The rectangles computed for one view root at one window size.</td><td><code>TreemapLayout</code></td></tr>
+  <tr><td>item</td><td>A rectangle in the layout that belongs to one node. Clicks resolve to items.</td><td><code>Item</code></td></tr>
+  <tr><td>leaf</td><td>A rectangle in the layout that the renderer shades with one color.</td><td><code>Leaf</code></td></tr>
+  <tr><td>lump</td><td>A gray leaf that stands for all the children too small to draw one by one.</td><td><code>directoryLeaf</code></td></tr>
+  <tr><td>render job</td><td>The plain values the renderer needs, with no node references.</td><td><code>TreemapRenderJob</code></td></tr>
+  <tr><td>render token</td><td>A flag shared with the renderer that stops work on an outdated picture.</td><td><code>RenderToken</code></td></tr>
+</table></div></section>
+
+<section><h2>Changing the tree</h2>
+<div class="card"><table class="stack">
+  <tr><th>Word</th><th>Meaning</th><th>In the code</th></tr>
+  <tr><td>identity check</td><td>The test that a node's path still leads to the object the scanner saw.</td><td><code>FileIdentity.verify</code></td></tr>
+  <tr><td>full rescan</td><td>A new scan of the root path that replaces the whole tree.</td><td><code>rescan()</code></td></tr>
+  <tr><td>folder rescan</td><td>A scan of one folder whose result replaces that folder's node. The menu item is Rescan This Folder.</td><td><code>rescan(_:)</code></td></tr>
+  <tr><td>splice</td><td>The step that puts a folder rescan's result into the tree.</td><td><code>TreeEdit.splice</code></td></tr>
+  <tr><td>reconcile</td><td>The step that gives each hard-link group one owner after an edit.</td><td><code>reconcile</code></td></tr>
+  <tr><td>generation</td><td>A counter that goes up with each finished full scan and each closed map. A folder rescan from an older generation is dropped.</td><td><code>scanGeneration</code></td></tr>
+</table></div></section>
+
+<details class="sources"><summary>Sources</summary><p><code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Model/FileNode.swift</code> · <code>Sources/MacDirStat/Model/TreeSafety.swift</code> · <code>Sources/MacDirStat/Model/ExtensionRegistry.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapLayout.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapRenderer.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapView.swift</code> · <code>Sources/MacDirStat/Views/MainView.swift</code> · <code>Sources/MacDirStat/MacDirStatApp.swift</code> · <code>Sources/MacDirStat/Support/Theme.swift</code></p></details>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System · MacDirStat</title>
+<link rel="stylesheet" href="site.css">
+<script src="site-config.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<h1>System</h1>
+<p class="lede">MacDirStat is one macOS process. Scanning and pixel shading run off the main thread, and everything that changes the tree runs on it.</p>
+
+<div class="card">
+<svg class="wide" viewBox="0 0 900 415" width="100%" role="img" aria-label="DiskScanner runs on background threads and TreemapRenderer on a render queue. AppState, the views, TreeEdit and TreemapCanvas run on the main thread.">
+  <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b6474"/></marker></defs>
+  <rect x="10" y="8" width="880" height="94" rx="10" fill="#f7f5ef" stroke="#d9d4c7"/>
+  <rect x="10" y="122" width="880" height="178" rx="10" fill="#f7f5ef" stroke="#d9d4c7"/>
+  <rect x="10" y="320" width="880" height="88" rx="10" fill="#f7f5ef" stroke="#d9d4c7"/>
+  <text x="24" y="52" font-size="13" font-weight="700" fill="#4a5163">Background</text><text x="24" y="70" font-size="13" font-weight="700" fill="#4a5163">threads</text>
+  <text x="24" y="210" font-size="13" font-weight="700" fill="#4a5163">Main thread</text>
+  <text x="24" y="359" font-size="13" font-weight="700" fill="#4a5163">treemap.render</text><text x="24" y="377" font-size="13" font-weight="700" fill="#4a5163">queue</text>
+
+  <rect x="370" y="25" width="140" height="60" rx="10" fill="#e7f4ef" stroke="#0c7a5f" stroke-width="2"/><text x="440" y="60" text-anchor="middle" font-size="14" font-weight="700" fill="#0c7a5f">DiskScanner</text>
+  <rect x="370" y="135" width="140" height="60" rx="10" fill="#eef0ff" stroke="#2f2fd0" stroke-width="2"/><text x="440" y="170" text-anchor="middle" font-size="14" font-weight="700" fill="#2f2fd0">AppState</text>
+  <rect x="140" y="135" width="160" height="60" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="220" y="161" text-anchor="middle" font-size="13" font-weight="700">DirectoryOutline</text><text x="220" y="179" text-anchor="middle" font-size="13" font-weight="700">ExtensionList</text>
+  <rect x="650" y="135" width="170" height="60" rx="10" fill="#faf0e4" stroke="#a8551c" stroke-width="2"/><text x="735" y="161" text-anchor="middle" font-size="14" font-weight="700" fill="#a8551c">TreemapCanvas</text><text x="735" y="179" text-anchor="middle" font-size="13" fill="#a8551c">runs TreemapLayout</text>
+  <rect x="370" y="235" width="140" height="50" rx="10" fill="#eef0f3" stroke="#5b6474" stroke-width="2"/><text x="440" y="265" text-anchor="middle" font-size="14" font-weight="700">TreeEdit</text>
+  <rect x="650" y="335" width="170" height="60" rx="10" fill="#faf0e4" stroke="#a8551c" stroke-width="2"/><text x="735" y="370" text-anchor="middle" font-size="14" font-weight="700" fill="#a8551c">TreemapRenderer</text>
+
+  <path d="M415 135 V89" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="407" y="116" text-anchor="end" font-size="13" fill="#4a5163">path</text>
+  <path d="M465 85 V131" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="473" y="116" font-size="13" fill="#4a5163">root FileNode, hard links</text>
+  <path d="M370 152 H304" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="336" y="145" text-anchor="middle" font-size="13" fill="#4a5163">tree</text>
+  <path d="M300 178 H366" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="336" y="194" text-anchor="middle" font-size="13" fill="#4a5163">clicks</text>
+  <path d="M510 152 H646" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="578" y="145" text-anchor="middle" font-size="13" fill="#4a5163">viewRoot, treeVersion</text>
+  <path d="M650 178 H514" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="582" y="194" text-anchor="middle" font-size="13" fill="#4a5163">select, zoom</text>
+  <path d="M440 195 V231" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="449" y="218" font-size="13" fill="#4a5163">node, fresh subtree</text>
+  <path d="M700 195 V331" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="692" y="268" text-anchor="end" font-size="13" fill="#4a5163">TreemapRenderJob</text>
+  <path d="M770 335 V199" stroke="#5b6474" stroke-width="2" fill="none" marker-end="url(#m)"/><text x="778" y="268" font-size="13" fill="#4a5163">CGImage</text>
+</svg></div>
+
+<section><h2>What each part owns</h2>
+<div class="card"><table class="stack">
+  <tr><th>Part</th><th>Owns</th><th>Runs on</th></tr>
+  <tr><td><code>AppState</code></td><td>The phase, the root, the selection, the view root and most actions a user can start. It is the only object that starts a scan or a trash.</td><td>Main thread</td></tr>
+  <tr><td><code>DiskScanner</code></td><td>The directory stack, the worker threads and the progress counters for one scan. A new instance runs for each scan.</td><td>Its own threads</td></tr>
+  <tr><td><code>FileNode</code></td><td>One node's name, size, counts, inode and links to its parent and children.</td><td>Background threads during a scan, then the main thread</td></tr>
+  <tr><td><code>TreeEdit</code></td><td>The edits that remove a node or splice in a folder rescan, including totals and hard-link owners.</td><td>Main thread</td></tr>
+  <tr><td><code>FileIdentity</code></td><td>The identity check that runs before a trash or a folder rescan.</td><td>Main thread</td></tr>
+  <tr><td><code>DirectoryOutline</code></td><td>The Tree's rows, its sort order and its cache of sorted children.</td><td>Main thread</td></tr>
+  <tr><td><code>ExtensionList</code></td><td>File Types' rows, up to 400 of them. A click sets or clears <code>selectedExtension</code>.</td><td>Main thread</td></tr>
+  <tr><td><code>TreemapCanvas</code></td><td>The Map's layout, its picture and the overlays for hover, selection and extension.</td><td>Main thread</td></tr>
+  <tr><td><code>TreemapRenderer</code></td><td>Turning one render job into one image. It holds no state.</td><td>Render queue</td></tr>
+</table></div></section>
+
+<section><h2>Who may change the tree</h2>
+<ul class="pts">
+  <li>While a scan runs, each worker writes only the nodes of the directory it took from the stack.</li>
+  <li><code>AppState</code> receives the finished root on the main thread, and only the main thread changes nodes after that.</li>
+  <li>Removing a node and splicing a folder rescan both go through <code>TreeEdit</code>, so ancestors' totals and sort order stay correct. <a href="edits.html">Trash and rescan</a> has the steps.</li>
+  <li>A change bumps <code>treeVersion</code>. The Tree and The Map reload when that number changes.</li>
+</ul></section>
+
+<section><h2>How a build reaches a Mac</h2>
+<div class="card"><div class="flow">
+  <div class="node"><b>A <code>v*</code> tag</b><small>Starts the Release workflow on a <code>macos-15</code> runner.</small></div>
+  <div class="arrow">↓ <span class="lbl">source at that tag</span></div>
+  <div class="node"><b><code>Scripts/test.sh</code></b><small>Runs the test suite. A failure stops the release.</small></div>
+  <div class="arrow">↓ <span class="lbl">tested source</span></div>
+  <div class="node"><b><code>Scripts/package-release.sh</code></b><small>Builds arm64 and x86_64, and merges them with <code>lipo</code>.</small></div>
+  <div class="arrow">↓ <span class="lbl">the app bundle</span></div>
+  <div class="node decide">Is the <code>DEVELOPER_ID_IDENTITY</code> secret set?</div>
+  <div class="branch">
+    <div class="node"><b>Yes</b><small>The build has a Developer ID signature, plus notarization if the notary settings are also present.</small></div>
+    <div class="node"><b>No</b><small>The build has an ad-hoc signature, and macOS blocks the first launch until the user allows it.</small></div>
+  </div>
+  <div class="arrow">↓ <span class="lbl">DMG and zip</span></div>
+  <div class="node"><b><code>gh release create</code></b><small>Publishes a GitHub Release with both files.</small></div>
+</div></div>
+<ul class="pts">
+  <li>The app runs on macOS 14 or later. Without Full Disk Access, macOS keeps some folders from the scanner and they count as unreadable.</li>
+  <li>The CI workflow runs the tests and <code>Scripts/build-app.sh</code> on pushes to <code>main</code> and on pull requests, then uploads the app as a workflow artifact. It publishes no release.</li>
+</ul></section>
+
+<details class="sources"><summary>Sources</summary><p><code>Sources/MacDirStat/AppState.swift</code> · <code>Sources/MacDirStat/Model/DiskScanner.swift</code> · <code>Sources/MacDirStat/Model/FileNode.swift</code> · <code>Sources/MacDirStat/Model/TreeSafety.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapView.swift</code> · <code>Sources/MacDirStat/Treemap/TreemapRenderer.swift</code> · <code>Sources/MacDirStat/Views/DirectoryOutline.swift</code> · <code>Sources/MacDirStat/Views/MainView.swift</code> · <code>Package.swift</code> · <code>Scripts/build-app.sh</code> · <code>Scripts/package-release.sh</code> · <code>.github/workflows/ci.yml</code> · <code>.github/workflows/release.yml</code></p></details>
+</body>
+</html>
