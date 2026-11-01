@@ -33,12 +33,12 @@
   <tr><th>Word</th><th>Meaning</th><th>In the code</th></tr>
   <tr><td>scan</td><td>One run of the scanner over a folder. The app's menus call this mapping.</td><td><code>DiskScanner</code></td></tr>
   <tr><td>tree</td><td>All the nodes from one scan, held in memory.</td><td><code>root</code></td></tr>
-  <tr><td>node</td><td>One file, folder or symlink in the tree.</td><td><code>FileNode</code></td></tr>
+  <tr><td>node</td><td>One file, folder, symlink or other entry in the tree.</td><td><code>FileNode</code></td></tr>
   <tr><td>root</td><td>The top node of the tree. Its name is the full path of the scanned folder.</td><td><code>root</code></td></tr>
   <tr><td>size</td><td>Bytes allocated on disk. A folder's size is the total for everything below it.</td><td><code>size</code></td></tr>
   <tr><td>logical size</td><td>A file's length in bytes, which can differ from its allocation.</td><td><code>logicalSize</code></td></tr>
   <tr><td>extension</td><td>The lowercase text after a file name's last dot, from 1 to 12 bytes long. A name that starts with its only dot has none.</td><td><code>extID</code></td></tr>
-  <tr><td>unreadable</td><td>A folder the scanner couldn't list. It stays in the tree with a lock icon.</td><td><code>unreadable</code></td></tr>
+  <tr><td>unreadable</td><td>A folder the scanner couldn't list. It stays in the tree, with a lock icon unless it's the root.</td><td><code>unreadable</code></td></tr>
   <tr><td>owner</td><td>The one link in a hard-link group whose size holds the file's allocation. Every other link in the group has size 0.</td><td><code>HardLinkRegistry</code></td></tr>
 </table></div></section>
 
@@ -46,7 +46,7 @@
 <div class="card"><table class="stack">
   <tr><th>Word</th><th>Meaning</th><th>In the code</th></tr>
   <tr><td>tile</td><td>A rectangle on The Map as the user sees it.</td><td><code>rect</code></td></tr>
-  <tr><td>layout</td><td>The rectangles computed for one view root at one window size.</td><td><code>TreemapLayout</code></td></tr>
+  <tr><td>layout</td><td>The rectangles computed for one view root at one canvas size.</td><td><code>TreemapLayout</code></td></tr>
   <tr><td>item</td><td>A rectangle in the layout that belongs to one node. Clicks resolve to items.</td><td><code>Item</code></td></tr>
   <tr><td>leaf</td><td>A rectangle in the layout that the renderer shades with one color.</td><td><code>Leaf</code></td></tr>
   <tr><td>lump</td><td>A gray leaf that stands for all the children too small to draw one by one.</td><td><code>directoryLeaf</code></td></tr>

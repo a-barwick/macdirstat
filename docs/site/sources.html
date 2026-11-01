@@ -16,7 +16,7 @@
 <div class="card"><table class="stack">
   <tr><th>Document</th><th>Covers</th><th>State</th></tr>
   <tr><td><code>README.md</code></td><td>Features, install steps, usage and shortcuts.</td><td>Mostly matches the code, with the differences listed below.</td></tr>
-  <tr><td><code>CONTRIBUTING.md</code></td><td>Setup, guidelines and the release steps.</td><td>Matches the code except for one rule listed below.</td></tr>
+  <tr><td><code>CONTRIBUTING.md</code></td><td>Setup, guidelines and the release steps.</td><td>Matches the code except for two rules listed below.</td></tr>
   <tr><td><code>.github/workflows/release.yml</code></td><td>The release steps and the secrets for signing.</td><td>Its header comment matches the workflow.</td></tr>
   <tr><td><code>Scripts/package-release.sh</code></td><td>Local packaging and its signing settings.</td><td>Its header comment matches the script.</td></tr>
   <tr><td><code>docs/sketchbook.jpg</code>, <code>docs/cushions-slate.jpg</code>, <code>docs/welcome.jpg</code></td><td>Screenshots of the app, using a demo folder.</td><td>Show the current window layout. Their dates aren't recorded.</td></tr>
@@ -32,6 +32,8 @@
   <tr><td><code>README.md</code></td><td>The <code>Scripts/</code> list names three scripts.</td><td>There are four, and the list leaves out <code>package-release.sh</code>.</td></tr>
   <tr><td><code>README.md</code></td><td>The shortcut table lists the main actions.</td><td>It leaves out ⇧⌘H for the home folder and ⇧⌘D for Macintosh HD.</td></tr>
   <tr><td><code>README.md</code></td><td>Tests run against real files in a temporary folder.</td><td>Seven of the ten tests do. The other three use nodes or render jobs in memory.</td></tr>
+  <tr><td><code>CONTRIBUTING.md</code></td><td>Tests use real files in a temporary folder.</td><td>Seven of the ten tests do, as in the row above.</td></tr>
+  <tr><td><code>README.md</code></td><td>Clicking an extension outlines every matching file on the map.</td><td>Files merged into a lump have no tile of their own, so they get no outline.</td></tr>
   <tr><td>Commit <span class="mono">bbe1e3b</span></td><td>Keep previous results when a rescan can't read the folder.</td><td>A folder rescan keeps them. A full rescan doesn't, as listed in <a href="open-questions.html">Open questions</a>.</td></tr>
 </table></div></section>
 
