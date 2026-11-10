@@ -119,7 +119,7 @@ Scripts/      build-app.sh, test.sh, make-icon.swift
 ./Scripts/build-app.sh   # release build → build/MacDirStat.app
 ```
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Design and system documentation lives in [docs/site/](docs/site/) and runs locally with `docs/serve.sh`.
 
 ## Acknowledgements
 
