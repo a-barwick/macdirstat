@@ -33,6 +33,41 @@ struct MacDirStatApp: App {
                     .keyboardShortcut("r")
                     .disabled(state.root == nil || state.isScanning)
             }
+            CommandGroup(after: .newItem) {
+                Button("Ask \(state.preferredAgent?.name ?? "an Agent") About This Scan") { state.askPreferredAgent() }
+                    .keyboardShortcut("a", modifiers: [.command, .shift])
+                    .disabled(state.preferredAgent == nil || state.root == nil || state.isScanning)
+                Menu("Ask an Agent") {
+                    if state.agents.isEmpty {
+                        Button("No agent CLIs found") {}.disabled(true)
+                    } else {
+                        ForEach(state.agents) { agent in
+                            Button("Ask \(agent.name)") { state.askAgent(agent) }
+                        }
+                    }
+                    Divider()
+                    Menu("Open in Terminal") {
+                        ForEach(state.terminals) { terminal in
+                            Button {
+                                state.preferredTerminal = terminal
+                            } label: {
+                                if terminal == state.activeTerminal {
+                                    Label(terminal.name, systemImage: "checkmark")
+                                } else {
+                                    Text(terminal.name)
+                                }
+                            }
+                        }
+                    }
+                }
+                .disabled(state.root == nil || state.isScanning)
+                Divider()
+                Button("Copy Report") { state.copyReport() }
+                    .disabled(state.root == nil || state.isScanning)
+                Button("Save Report…") { state.saveReport() }
+                    .keyboardShortcut("s")
+                    .disabled(state.root == nil || state.isScanning)
+            }
             CommandMenu("Map") {
                 Button("Zoom Into Selection") { if let s = state.selection { state.zoom(into: s) } }
                     .keyboardShortcut(.downArrow, modifiers: .command)

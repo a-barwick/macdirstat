@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Hover lives in its own object so mouse movement only redraws the bits that show it.
 @MainActor
@@ -42,6 +43,14 @@ final class AppState: ObservableObject {
     @Published var style: TreemapStyle { didSet { UserDefaults.standard.set(style.rawValue, forKey: "style") } }
     @Published var showLabels: Bool { didSet { UserDefaults.standard.set(showLabels, forKey: "labels") } }
 
+    // Agent handoff
+    @Published private(set) var agents: [AgentCLI] = []
+    @Published private(set) var terminals: [TerminalApp] = []
+    /// The terminal the user picked; nil means "first one we found".
+    @Published var preferredTerminal: TerminalApp? {
+        didSet { UserDefaults.standard.set(preferredTerminal?.bundleID, forKey: "terminalBundleID") }
+    }
+
     let hover = HoverState()
 
     private var scanner: DiskScanner?
@@ -57,6 +66,11 @@ final class AppState: ObservableObject {
         theme = Theme.named(defaults.string(forKey: "theme") ?? "ivory")
         style = TreemapStyle(rawValue: defaults.string(forKey: "style") ?? "") ?? .sketch
         showLabels = defaults.object(forKey: "labels") as? Bool ?? true
+        agents = AgentCatalog.detect()
+        terminals = TerminalCatalog.detect()
+        if let saved = defaults.string(forKey: "terminalBundleID") {
+            preferredTerminal = terminals.first { $0.bundleID == saved }
+        }
     }
 
     var isScanning: Bool { phase == .scanning }
@@ -338,6 +352,95 @@ final class AppState: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.2, execute: work)
     }
 
+    // MARK: - Agent handoff & report export
+
+    /// The agent the one-click button uses: last one asked, else first found.
+    var preferredAgent: AgentCLI? {
+        if let command = UserDefaults.standard.string(forKey: "agentCommand"),
+           let found = agents.first(where: { $0.command == command }) {
+            return found
+        }
+        return agents.first
+    }
+
+    var activeTerminal: TerminalApp? { preferredTerminal ?? terminals.first }
+
+    func refreshAgentCatalog() {
+        agents = AgentCatalog.detect()
+        terminals = TerminalCatalog.detect()
+        if let picked = preferredTerminal, !terminals.contains(picked) { preferredTerminal = nil }
+    }
+
+    private func reportMarkdown(about target: FileNode) -> String {
+        ScanReport.markdown(root: target, scanRoot: root ?? target,
+                            unreadableCount: unreadableCount, scanDuration: lastScanDuration)
+    }
+
+    /// Writes the report package and opens the agent in the user's terminal, already briefed.
+    func askAgent(_ agent: AgentCLI, about node: FileNode? = nil) {
+        guard let root else { return }
+        let target = node ?? root
+        guard target.isAttached(to: root) else { return }
+        refreshAgentCatalog()
+        guard let live = agents.first(where: { $0.command == agent.command }) else {
+            showToast("\(agent.name) isn't installed anymore — pick another agent.")
+            return
+        }
+        guard let terminal = activeTerminal else {
+            showToast("No terminal app found on this Mac.")
+            return
+        }
+        UserDefaults.standard.set(live.command, forKey: "agentCommand")
+        do {
+            let package = try AgentHandoff.makePackage(root: target, markdown: reportMarkdown(about: target), agent: live)
+            switch AgentHandoff.open(package, in: terminal) {
+            case .success:
+                showToast("Opening \(live.name) in \(terminal.name) with your report ✦")
+            case .failure(let why):
+                showToast("\(why.text) The launcher's in Finder — double-click it to run.")
+                NSWorkspace.shared.activateFileViewerSelecting([package.launcher])
+            }
+        } catch {
+            showToast("Couldn't write the report: \(error.localizedDescription)")
+        }
+    }
+
+    func askPreferredAgent(about node: FileNode? = nil) {
+        refreshAgentCatalog()
+        guard let agent = preferredAgent else {
+            showToast("No agent CLIs found — install Claude Code, Codex, Muse, Grok… or copy the report instead.")
+            return
+        }
+        askAgent(agent, about: node)
+    }
+
+    func copyReport(about node: FileNode? = nil) {
+        guard let root else { return }
+        let target = node ?? root
+        guard target.isAttached(to: root) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(reportMarkdown(about: target), forType: .string)
+        showToast("Report copied — paste it into any agent ✦")
+    }
+
+    func saveReport(about node: FileNode? = nil) {
+        guard let root else { return }
+        let target = node ?? root
+        guard target.isAttached(to: root) else { return }
+        let panel = NSSavePanel()
+        panel.prompt = "Save Report"
+        panel.message = "Save a Markdown report an agent (or a human) can read"
+        panel.nameFieldStringValue = "macdirstat-\(AgentHandoff.slug(target.displayName)).md"
+        panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try reportMarkdown(about: target).write(to: url, atomically: true, encoding: .utf8)
+            showToast("Report saved to \(url.lastPathComponent) ✦")
+        } catch {
+            showToast("Couldn't save it: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Context menu shared by tree and treemap
 
     func contextMenu(for node: FileNode) -> NSMenu {
@@ -353,6 +456,9 @@ final class AppState: ObservableObject {
         item("Reveal in Finder", "folder") { [weak self] in self?.revealInFinder(node) }
         item("Open", "arrow.up.forward.app") { [weak self] in self?.open(node) }
         item("Copy Path", "doc.on.doc") { [weak self] in self?.copyPath(node) }
+        if let agent = preferredAgent {
+            item("Ask \(agent.name) About This…", "sparkles") { [weak self] in self?.askAgent(agent, about: node) }
+        }
         if node.isDirectory {
             item("Rescan This Folder", "arrow.clockwise") { [weak self] in self?.rescan(node) }
         }

@@ -96,6 +96,7 @@ struct HeaderBar: View {
             Spacer()
 
             if state.phase == .ready {
+                AgentMenu(state: state)
                 DoodleIconButton(systemName: "arrow.up", help: "Zoom out (⌘↑)", theme: theme) { state.zoomOut() }
                     .disabled(!state.canZoomOut)
                 DoodleIconButton(systemName: "arrow.clockwise", help: "Rescan (⌘R)", theme: theme) { state.rescan() }
@@ -111,6 +112,84 @@ struct HeaderBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(theme.line.color).frame(height: 1)
         }
+    }
+}
+
+/// One click sends a report of this scan to the user's agent CLI in their terminal.
+/// The chevron picks a different agent or terminal, or just copies/saves the report.
+struct AgentMenu: View {
+    @ObservedObject var state: AppState
+    private var theme: Theme { state.theme }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let agent = state.preferredAgent {
+                Button {
+                    state.askAgent(agent)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "sparkles").font(.system(size: 11, weight: .bold))
+                        Text("Ask \(agent.name)")
+                    }
+                }
+                .buttonStyle(SketchButtonStyle(theme: theme, prominent: true, seed: 77, compact: true))
+                .help("Open \(agent.name) in \(state.activeTerminal?.name ?? "your terminal"), briefed with a report of this scan (⇧⌘A)")
+            }
+
+            Menu {
+                if state.agents.isEmpty {
+                    Button("No agent CLIs found") {}.disabled(true)
+                } else {
+                    ForEach(state.agents) { agent in
+                        Button {
+                            state.askAgent(agent)
+                        } label: {
+                            if agent == state.preferredAgent {
+                                Label("Ask \(agent.name)", systemImage: "checkmark")
+                            } else {
+                                Text("Ask \(agent.name)")
+                            }
+                        }
+                    }
+                }
+                Divider()
+                Menu("Open in Terminal") {
+                    ForEach(state.terminals) { terminal in
+                        Button {
+                            state.preferredTerminal = terminal
+                        } label: {
+                            if terminal == state.activeTerminal {
+                                Label(terminal.name, systemImage: "checkmark")
+                            } else {
+                                Text(terminal.name)
+                            }
+                        }
+                    }
+                }
+                Divider()
+                Button("Copy Report") { state.copyReport() }
+                Button("Save Report…") { state.saveReport() }
+            } label: {
+                HStack(spacing: 5) {
+                    if state.preferredAgent == nil {
+                        Image(systemName: "doc.text").font(.system(size: 11, weight: .bold))
+                        Text("Export Report").font(Fonts.hand(13, bold: true))
+                    }
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(theme.ink.color)
+                .frame(height: 26)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .padding(.horizontal, 6)
+            .overlay(SketchRect(seed: 78, roughness: 1).stroke(theme.ink.color.opacity(0.35), lineWidth: 1))
+            .help(state.preferredAgent == nil
+                  ? "Copy or save a Markdown report of this scan"
+                  : "Pick a different agent or terminal, or copy/save the report")
+        }
+        .onAppear { state.refreshAgentCatalog() }
     }
 }
 

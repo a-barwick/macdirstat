@@ -24,6 +24,12 @@ clay-orange ink and pencil hatching.
   - Big folders get hand-lettered name tags. Click to select, double-click to dive in, and use the breadcrumbs
     to climb back out.
 - **File Types.** See which extensions eat your disk, and click one to outline every matching file on the map.
+- **Ask an agent.** One click packages the scan into a compact Markdown report (where the space goes, largest
+  files, big files untouched for 2+ years, file types) and opens your coding agent — Claude Code, Codex, Muse,
+  Grok, OpenCode, Cursor Agent, Gemini CLI or Aider — in your terminal, already briefed with it. It detects
+  whichever agents and terminals (Ghostty, iTerm2, Warp, WezTerm, Alacritty, kitty, Terminal) you have installed.
+  You can also copy the report to paste anywhere, save it as a file, or right-click any folder to ask about
+  just that folder.
 - **Cleanup that's hard to get wrong.** Moving something to the Trash asks first. Right before it acts, it checks
   that the path still points at the item you scanned, so a symlink swap or a replaced file won't redirect it.
 - **Four themes:** Ivory, Oat, Clay and Slate (dark).
@@ -61,6 +67,12 @@ cd macdirstat
 open build/MacDirStat.app
 ```
 
+Or build and install it into Applications in one step:
+
+```bash
+./Scripts/install.sh   # → /Applications/MacDirStat.app
+```
+
 An app you build yourself never gets the first-launch warning.
 
 ### Seeing everything
@@ -78,12 +90,22 @@ terminal:
 open /Applications/MacDirStat.app --args --scan ~/Downloads
 ```
 
+Once a scan is up, the header's **Ask …** button (⇧⌘A) writes the report to
+`~/Library/Application Support/MacDirStat/Reports/` and opens your agent there in your terminal with a
+briefing prompt: summarize what's using the space, flag anything odd, and propose cleanup steps ranked by
+space saved vs. risk — verifying with `ls`/`du`, and never deleting anything without asking you first.
+The little chevron next to the button switches agent or terminal (both are remembered), or copies/saves
+the report instead. Right-clicking any file or folder offers "Ask … About This" for a report scoped to
+just that item.
+
 | Action | Shortcut |
 |---|---|
 | Map a folder | ⌘O |
 | Rescan | ⌘R (right-click › Rescan This Folder for just one folder) |
 | Zoom into selection / out / to top | ⌘↓ / ⌘↑ / ⇧⌘↑ |
 | Reveal in Finder / Copy path | ⌥⌘F / ⇧⌘C |
+| Ask an agent about this scan | ⇧⌘A |
+| Save report | ⌘S |
 | Move to Trash | ⌘⌫ (asks first) |
 | Toggle map labels | ⌘L |
 | Switch theme | ⌘1 – ⌘4 |
@@ -101,7 +123,8 @@ Sources/MacDirStat/
   Treemap/    TreemapLayout (squarify + cushion coefficients), TreemapRenderer (pixels + sketch pass),
               TreemapView (NSView: hit-testing, overlays)
   Views/      SwiftUI shell, DirectoryOutline (NSOutlineView), welcome and scanning screens
-  Support/    Themes, Sketch (rough.js-style wobbly paths), formatting and whimsy
+  Support/    Themes, Sketch (rough.js-style wobbly paths), formatting and whimsy,
+              AgentExport (report writer + agent/terminal detection and handoff)
 Tests/        Swift Testing suite, run against real files in a temporary folder
 Scripts/      build-app.sh, test.sh, make-icon.swift
 ```
