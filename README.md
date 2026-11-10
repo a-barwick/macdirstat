@@ -121,6 +121,8 @@ Scripts/      build-app.sh, test.sh, make-icon.swift
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+The code is documented in [docs/site/](docs/site/), which you can run with `docs/serve.sh`.
+
 ## Acknowledgements
 
 - [WinDirStat](https://windirstat.net/) and KDirStat, for the idea and the tree + types + treemap layout.
