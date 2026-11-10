@@ -4,6 +4,8 @@
 directory tree, a list of file types, and a treemap where big boxes are big files. It's drawn with ivory paper,
 clay-orange ink and pencil hatching.
 
+The scan, the map, and trash are documented in [docs/site](docs/site/).
+
 ![MacDirStat in Sketchbook style](docs/sketchbook.jpg)
 
 <p align="center">
