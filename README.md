@@ -92,6 +92,8 @@ Moving something to the Trash doesn't free space until you empty the Trash.
 
 ## How it works
 
+[Documentation](docs/site/) describes the scan, tree edits and treemap rendering.
+
 ```
 Sources/MacDirStat/
   Model/      FileNode tree, DiskScanner (getattrlistbulk + worker pool), ExtensionRegistry,
